@@ -3,6 +3,7 @@ import axios from 'axios';
 import jwtDecode from 'jwt-decode';
 import jwtServiceConfig from './jwtServiceConfig';
 import CryptoJS from 'crypto-js';
+import api from 'src/app/API/api';
 
 /* eslint-disable camelcase */
 
@@ -64,8 +65,8 @@ class JwtService extends FuseUtils.EventEmitter {
         "usua_Contrasenia": password
       }
 
-      axios
-        .post(process.env.REACT_APP_API_URL+`api/Usuarios/Login`, dataPeticion)
+      api
+        .post(`api/Usuarios/Login`, dataPeticion)
         .then(response => {
           if (response.data.data) {
             let user = {
@@ -109,8 +110,8 @@ class JwtService extends FuseUtils.EventEmitter {
         "usua_Contrasenia": datos[1]
       }
 
-      axios
-      .post(process.env.REACT_APP_API_URL+`api/Usuarios/Login`, dataPeticion)
+      api
+      .post(`api/Usuarios/Login`, dataPeticion)
       .then(response => {
           if (response.data.data) {
             let user = {
