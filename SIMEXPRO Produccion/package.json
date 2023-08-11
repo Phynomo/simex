@@ -1,7 +1,6 @@
 {
     "name": "fuse-react-app",
     "version": "8.2.1",
-    "proxy": "https://simexpro.azurewebsites.net/",
     "dependencies": {
         "@ant-design/icons": "^5.1.4",
         "@date-io/date-fns-jalali": "2.15.0",
