@@ -65,7 +65,7 @@ class JwtService extends FuseUtils.EventEmitter {
       }
 
       axios
-        .post(`api/Usuarios/Login`, dataPeticion)
+        .post(process.env.REACT_APP_API_URL+`api/Usuarios/Login`, dataPeticion)
         .then(response => {
           if (response.data.data) {
             let user = {
@@ -110,7 +110,7 @@ class JwtService extends FuseUtils.EventEmitter {
       }
 
       axios
-      .post(`api/Usuarios/Login`, dataPeticion)
+      .post(process.env.REACT_APP_API_URL+`api/Usuarios/Login`, dataPeticion)
       .then(response => {
           if (response.data.data) {
             let user = {
