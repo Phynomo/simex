@@ -1,25 +1,7 @@
-/* eslint-disable no-lone-blocks */
-/* eslint-disable prettier/prettier */
-import React, { useState, useEffect } from "react";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
 import {
-  Card,
-  CardContent,
-  CardMedia,
-  DialogTitle,
-  DialogContentText,
-  DialogContent,
-  DialogActions,
-  Dialog,
-  DataGrid,
-  MenuItem,
-  Menu,
-  Box,
-  Collapse,
-  Typography,
-  Select,
-  Grid,
-  GridToolbar,
-  Stack,
   Button,
   FormControl,
   Icon,
@@ -27,87 +9,121 @@ import {
   InputAdornment,
   InputLabel,
   TextField,
-  esES,
-  FormLabel,
-  Autocomplete,
+  Divider,
+  Chip,
 } from "@mui/material";
-import * as yup from "yup";
-import { yupResolver } from "@hookform/resolvers/yup";
+import * as React from "react";
+import Stack from "@mui/material/Stack";
+import { useState, useEffect } from "react";
 import SearchIcon from "@mui/icons-material/Search";
+import Collapse from "@mui/material/Collapse";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import Select from "@mui/material/Select";
+import Box from "@mui/material/Box";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import FormLabel from "@mui/material/FormLabel";
+
+//Imports de validaciones
+import * as yup from "yup";
 import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+//Imports tabla
 import { Badge, Dropdown, Space, Table } from "antd";
-import { toast, ToastContainer } from "react-toastify";
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+//Import service
+import ColoresService from "./ColoresService";
+//import Toast
 import "react-toastify/dist/ReactToastify.css";
-import axios from 'axios';
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+} from "src/styles/toastsFunctions";
+
+/* Campos del formulario*/
+const defaultColoresValues = {
+  id: "", //id necesario para el editar
+  colr_Nombre: "",
+};
+
+/* Esquema del fomulario (validaciones) */
+//En el esquema se eligen las validaciones que el formulario tendra
+const accountSchema = yup.object().shape({
+  id: yup.string(),
+  colr_Nombre: yup.string().trim().required(""),
+});
 
 function ColoresIndex() {
-  //Constante para la busqueda del datatable
+
+  //variable para la barra de busqueda
   const [searchText, setSearchText] = useState("");
 
-  //Constante para mostrar el index de la pantalla
+  //Variables para los collapse
   const [mostrarIndex, setmostrarIndex] = useState(true);
-
-  //Constantes para los Collapse de agregar, editar y detalles
   const [mostrarAdd, setmostrarAdd] = useState(false);
-  const [mostrarEdit, setmostrarEdit] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
 
-  //Constante para las filas que tendrá cada paginación del datatable
+  //Variable donde se guardan los datos del detalle seleccionado
+  const [DatosDetalles, setDatosDetalles] = useState({});
+
+  //variable para el dialog(modal) de eliminar
+  const [Eliminar, setEliminar] = useState(false);
+
+  //Variable que indica si el usuario a seleccionar crear o editar
+  const [editar, setEditar] = useState(false);
+
+  //Variable que guarda la cantidad de filas a mostrar
   const [filas, setFilas] = React.useState(10);
 
-  //Constante de los valores de los textfield de la pantalla
-  const [id, setid] = useState("");
-  const [colores, setcolores] = useState("");
-  const [codigos, setcodigos] = useState("");
+  //Variable que hace algo con el menu XD
+  const [anchorEl, setAnchorEl] = useState({});
 
-  //Constante solo para que quitar el error de los textfield no controlados
-  const [message, setMessage] = useState();
+  /* Datos de la tabla */
+  const [data, setData] = useState([]);
 
-  //Constante para asignar los valores a la tabla y mapear
-  const[DataTabla, setDataTabla] = useState([])
 
-    //Hook UseEffect para que cargue los datos de un solo cuando inicice la pantalla
-    useEffect(() => {
-      CargarDatosTabla()
-    }, []);
-
-      //Constante para cargar datos a las tablas
-  const CargarDatosTabla = async () => {
-    try {
-    const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      const response = await axios.get(process.env.REACT_APP_API_URL+'api/Colores/Listar', {
-        headers: customHeaders,
-      }); 
-      console.log(response)
-      const rows = response.data.data.map((item,index) => {
-        return {
-          key:index,
-          id: item.colr_Id,
-          colores: item.colr_Nombre,
-          codigos: item.colr_Codigo
-        }
-      });
-      setDataTabla(rows);
-    } catch (error) {
-    }
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTabla = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAdd(!mostrarAdd);
+    reset(defaultColoresValues);
   };
 
-  //Constantes para el dialog de eliminar
-  const [Eliminar, setEliminar] = useState(false);
+  //Controlador del dialog(modal) eliminar
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
   };
 
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (rowId, colores, codigos) => {
-    setid(rowId);
-    setcolores(colores);
-    setcodigos(codigos);
+  //Controlador del collapse detalles
+  const CollapseDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
   };
 
-  //Constante para el cerrrar las opciones del boton de opciones
+  //controlador de las fillas a mostrar
+  const handleChangeFilas = (event) => {
+    setFilas(event.target.value);
+  };
+
+  //abre el menu al cual se le dio click
+  const handleClick = (event, id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: event.currentTarget,
+    }));
+  };
+
+  //Cierra el menu abierto
   const handleClose = (id) => {
     setAnchorEl((prevState) => ({
       ...prevState,
@@ -115,50 +131,43 @@ function ColoresIndex() {
     }));
   };
 
-  //Constante para la accion de editar, abre el collapse de editar y carga el dato en el textfield
-  const handleEdit = (id, colores, codigos) => {
-    setcolores(colores);
-    setcodigos(codigos);
-    setid(id);
-    MostrarCollapseEditar();
-    handleClose(id);
+  //Handle que inicia la funcion de editar
+  const handleEdit = (datos) => {
+    VisibilidadTabla();
+    setEditar(true);
+    //insertar aca las variables necesarias en su formulario
+    setValue("id", datos["colr_Id"]);
+    setValue("colr_Nombre", datos["colr_Nombre"]);
+    handleClose(datos.colr_Id);
   };
 
-  //Constante abrir el collapse de los detalles de la pantalla
-  const handleDetails = (id, colores, codigos) => {
-    DetallesTabla(id, colores, codigos);
-    MostrarCollapseDetalles();
-    handleClose(id);
+  //Handle para mostrar los detalles del registro
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos); //se guardan los datos en la variable escrita antes
+    CollapseDetalles();
+    handleClose(datos.colr_Id);
   };
 
-  //Constante para la accción de eliminar y que abre el dialog de eliminar en el index y cierra el boton de opciones
-  const handleDelete = (id) => {
-    DialogEliminar();
-    handleClose(id);
+  //Handle delete en este caso no necesario (si quere mas info ir a la pantalla "TiposIdentidad")
+  const handleDelete = (datos) => {
+    // en caso de ocupar eliminar
+    handleClose(datos.colr_Id);
   };
 
-  //Constante para el boton de opciones
-  const [anchorEl, setAnchorEl] = useState({});
 
   //Constante de las columnas del index
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      sorter: (a, b) => a.id - b.id, //sorting para Numeros
-    },
-    {
-      title: "Código Hexadecimal",
-      dataIndex: "codigos",
-      key: "codigos",
-      sorter: (a, b) => a.codigos.localeCompare(b.codigos), //sorting para Letras
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
     },
     {
       title: "Nombre",
-      dataIndex: "colores",
-      key: "colores",
-      sorter: (a, b) => a.colores.localeCompare(b.colores), //sorting para Letras
+      dataIndex: "colr_Nombre",
+      key: "colr_Nombre",
+      sorter: (a, b) => a.colr_Nombre.localeCompare(b.colr_Nombre), //sorting para Letras
     },
     {
       title: "Acciones",
@@ -167,9 +176,9 @@ function ColoresIndex() {
         <div key={params.id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.colr_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              onClick={(e) => handleClick(e, params.colr_Id)}
               variant="contained"
               style={{
                 borderRadius: "10px",
@@ -181,29 +190,21 @@ function ColoresIndex() {
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.colr_Id}`}
+              anchorEl={anchorEl[params.colr_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.colr_Id])}
+              onClose={() => handleClose(params.colr_Id)}
             >
-              <MenuItem
-                onClick={() =>
-                  handleEdit(params.id, params.colores, params.codigos)
-                }
-              >
+              <MenuItem onClick={() => handleEdit(params)}>
                 <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem
-                onClick={() =>
-                  handleDetails(params.id, params.colores, params.codigos)
-                }
-              >
+              <MenuItem onClick={() => handleDetails(params)}>
                 <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.id)}>
+              {/* <MenuItem onClick={() => handleDelete(params)}>
                 <Icon>delete</Icon>ㅤEliminar
-              </MenuItem>
+              </MenuItem> */}
             </Menu>
           </Stack>
         </div>
@@ -211,30 +212,30 @@ function ColoresIndex() {
     },
   ];
 
-  //Constante para el textfield de busqueda
+  //Controlador de la barra buscadora de la tabla
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
-  //Constante que detecta el cambio de las filas que se mostraran en el index
-  const handleChange = (event) => {
-    setFilas(event.target.value);
-    setMessage(event.target.value);
-  };
-
-  //Constantes de los campos que se utilizaran para filtrar datos
-  const camposToFilter = ["id", "colores", "codigos"];
+  //Constantes de los campos que se utilizaran para filtrar datos (Ingresar los campos que pusieron en la tabla(Columns))
+  const camposToFilter = ["key", "colr_Nombre"];
 
   //Constante que ayuda a filtrar el datatable
-  const filteredRows = DataTabla.filter((row) => {
+  const filteredRows = data.filter((row) => {
     if (searchText === "") {
-      return true;  // Mostrar todas las filas si el buscador está vacío
+      return true; // Mostrar todas las filas si el buscador está vacío
     }
-  
+
     for (const [key, value] of Object.entries(row)) {
       if (camposToFilter.includes(key)) {
-        const formattedValue = typeof value === 'number' ? value.toString() : value.toString().toLowerCase();
-        const formattedSearchText = typeof searchText === 'number' ? searchText.toString() : searchText.toLowerCase();
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
         if (formattedValue.includes(formattedSearchText)) {
           return true;
         }
@@ -243,206 +244,88 @@ function ColoresIndex() {
     return false;
   });
 
-
-//Constante ToastSuccess y ToastWarning que nos sirven para las alertas en las validaciones del formulario
-const ToastSuccess =() => {
-  toast.success('Datos ingresados correctamente.', {
-    theme: 'dark',
-    style: {
-      marginTop: '50px'
-    },
-    autoClose: 1500,
-    closeOnClick: true
-  });
-}
-
-  const ToastWarning = () => {
-    toast.warning('No se permiten campos vacios.', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
+  //Declaracion del formulario
+  const { handleSubmit, register, reset, control, watch, formState, setValue } =
+    useForm({
+      defaultColoresValues, //Campos del formulario
+      mode: "all",
+      resolver: yupResolver(accountSchema), //Esquema del formulario
     });
-  }
 
-  //Constante de los datos por defecto que tendran los formulario
-  const defaultColoresValues = {
-    colores: "",
-    codigos: "",
-  };
-
-  //Constante de los datos que serán requeridos para el formulario
-  const ColoresSchema = yup.object().shape({
-    colores: yup.string().required(),
-    codigos: yup.string().required(),
-  });
-
-  //Constante para mostrar el collapse de agregar un registro
-  const MostrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAdd(!mostrarAdd);
-    reset(defaultColoresValues);
-  };
-
-  //Constante para mostrar el collapse de editar un registro
-  const MostrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEdit(!mostrarEdit);
-    reset(defaultColoresValues);
-  };
-
-  //Constante para mostrar el collapse de detalles un registro
-  const MostrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-  //Constante para cerrar el collapse de agregar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-  const CerrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAdd(!mostrarAdd);
-    reset(defaultColoresValues);
-  };
-
-  //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-  const CerrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEdit(!mostrarEdit);
-    reset(defaultColoresValues);
-  };
-
-  //Constante para cerrar el collapse de detalles
-  const CerrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-  //Constante que nos ayuda para las validaciones con yup para los formularios
-  const { handleSubmit, register, reset, control, watch, formState } = useForm({
-    defaultColoresValues,
-    mode: "all",
-    resolver: yupResolver(ColoresSchema),
-  });
-
+  //Validacion de campos vacios y errores
   const { isValid, dirtyFields, errors } = formState;
 
-  //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de agregar
-  const ValidacionAgregar = (data) => {
-    console.log(data);
-    if (data.colores != null && data.codigos != null) {
-      if (data.colores != "" && data.codigos != "") {
-        MostrarCollapseAgregar();
-        ToastSuccess();
-      } else {
-        ToastWarning();
-      }
-    } else {
-      ToastWarning();
+  //Datos del formulario
+  const datosWatch = watch();
+
+  //Peticion para cargar datos de la tabla
+  const coloresGetData = async () => {
+    try {
+      setData(await ColoresService.listar());
+    } catch (error) {
+      console.log(error.message);
     }
   };
 
-  //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-  const ValidacionesEditar = (data) => {
-    console.log(data);
-    if (data.colores != null && data.codigos != null) {
-      if (data.colores != "" && data.codigos != "") {
-        MostrarCollapseEditar();
-        toast.success("Datos editados correctamente.", {
-          theme: "dark",
-          style: {
-            marginTop: "50px",
-          },
-          autoClose: 1500,
-          closeOnClick: true,
-        });
-      } else {
-        toast.error("Debe completar los campos.", {
-          theme: "dark",
-          style: {
-            marginTop: "50px",
-          },
-          autoClose: 1500,
-          closeOnClick: true,
-        });
+
+  //Peticion para crear un registro
+  const coloresCreate = async () => {
+    try {
+      const response = await ColoresService.crear(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        coloresGetData();
+        VisibilidadTabla();
+        reset(defaultColoresValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
       }
-    } else {
-      toast.error("Debe completar los campos.", {
-        theme: "dark",
-        style: {
-          marginTop: "50px",
-        },
-        autoClose: 1500,
-        closeOnClick: true,
-      });
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
     }
   };
 
-  //Constante cuando se hace click para el boton de opciones
-  const handleClick = (event, id) => {
-    setAnchorEl((prevState) => ({
-      ...prevState,
-      [id]: event.currentTarget,
-    }));
+  // Peticion para editar un registro
+  const coloresEdit = async () => {
+    try {
+      const response = await ColoresService.editar(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha editado exitosamente");
+        coloresGetData();
+        VisibilidadTabla();
+        reset(defaultColoresValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
+    }
   };
 
-  //Constante para ejecutar las validaciones y el envio del formulario en el boton de agregar en el collapse de agregar
-  const AgregarRegistro = () => {
-    const formData = watch();
-    ValidacionAgregar(formData);
-    setTimeout(() => {
-      handleSubmit(ValidacionAgregar)();
-    }, "250");
-  };
+  //useEffect para cargar datos al ingresar a la pantalla
+  useEffect(() => {
+    coloresGetData();
+  }, []);
 
-  const EditarRegistro = () => {
-    const formData = watch();
-    formData.colores = colores;
-    formData.codigos = codigos;
-    ValidacionesEditar(formData);
-    setTimeout(() => {
-      reset(defaultColoresValues);
-      handleSubmit(ValidacionesEditar)();
-    }, "250");
-  };
-
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
-
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
+  //Controlador del formulario
+  const GuardarColores = () => {
+    if (isValid) {
+      // Validacion de campos completos
+      if (!editar) {
+        // Validacion de la funcion a realizar
+        coloresCreate();
+      } else {
+        coloresEdit();
+      }
+    } else {
+      ToastWarning("Completa todos los campos");
+    }
   };
 
   return (
     <Card sx={{ minWidth: 275, margin: "40px" }}>
-      <ToastContainer />
-      {/* CardMedia para los header de la carta (Imagenes header con nombres de la carta)*/}
       <CardMedia
         component="img"
         height="200"
@@ -450,7 +333,7 @@ const ToastSuccess =() => {
         alt="Encabezado de la carta"
       />
 
-      {/*Collapse del index*/}
+      {/* Inicio del Collapse incial (Tabla/Index) */}
       <Collapse in={mostrarIndex}>
         <CardContent
           sx={{
@@ -471,31 +354,32 @@ const ToastSuccess =() => {
                 color: "white",
                 "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={() => {
+                VisibilidadTabla();
+                setEditar();
+              }}
             >
               Nuevo
             </Button>
           </Stack>
           {/* Botón de Nuevo Fin */}
 
-          {/* Select para las filas de la tabla inicio*/}
+          {/* Filtros de la tabla (Filas/Buscar) */}
           <Stack direction="row" spacing={1}>
             <label className="mt-8">Filas por página:</label>
             <FormControl sx={{ minWidth: 50 }} size="small">
-              {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
               <Select
                 labelId="demo-select-small-label"
                 id="demo-select-small"
                 value={filas}
                 // label="Filas"
-                onChange={handleChange}
+                onChange={handleChangeFilas}
               >
                 <MenuItem value={10}>10</MenuItem>
                 <MenuItem value={20}>20</MenuItem>
                 <MenuItem value={30}>30</MenuItem>
               </Select>
             </FormControl>
-            {/* Select para las filas de la tabla fin*/}
 
             {/* Barra de Busqueda en la Tabla */}
             <TextField
@@ -518,351 +402,117 @@ const ToastSuccess =() => {
             {/* Barra de Busqueda en la Tabla fin */}
           </Stack>
         </CardContent>
-      </Collapse>
 
-      {/* Mostrar tabla index inicio*/}
-      <Collapse in={mostrarIndex}>
+        {/* Declaracion de la tabla */}
         <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
             columns={columns}
             dataSource={filteredRows}
             size="small"
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
+            }}
             pagination={{
               pageSize: filas,
-              className: "decoration-white",
+              showSizeChanger: false,
+              className: "custom-pagination",
             }}
           />
         </div>
       </Collapse>
-      {/* Mostrar tabla index fin*/}
 
-      {/* Collapse para el formulario de agregar un registro inicio*/}
-      <Collapse in={mostrarAdd}>
-        <CardContent
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={6} marginTop={"30px"}>
-              <Controller
-                render={({ field }) => (
-                  <FormControl error={!!errors.codigos} fullWidth={true}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Código
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      error={!!errors.codigos}
-                      placeholder="Ingrese el código"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                )}
-                name="codigo"
-                control={control}
-              />
-            </Grid>
+      {/* Inicio del Formulario */}
+      <form onSubmit={handleSubmit((_data) => { })}>
+        <Collapse in={mostrarAdd}>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar Color" : "Agregar Color"}
+                  />
+                </Divider>
+              </Grid>
+              <Grid item xs={2}></Grid>
+              <Grid item xs={8}>
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.colr_Nombre}>Nombre del Color</FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        id="outlined-disabled"
+                        inputProps={{
+                          maxLength: 150,
+                        }}
+                        error={!!errors.colr_Nombre}
+                      ></TextField>
+                    )}
+                    name="colr_Nombre"
+                    control={control}
+                  ></Controller>
+                </FormControl>
+              </Grid>
 
-            <Grid item xs={6} marginTop={"30px"}>
-              <Controller
-                render={({ field }) => (
-                  <FormControl error={!!errors.colores} fullWidth={true}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Nombre del Color
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      error={!!errors.colores}
-                      placeholder="Ingrese el nombre"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                )}
-                name="colores"
-                control={control}
-              />
-            </Grid>
-
-            <Grid
-              item
-              xs={12}
-              sx={{
-                display: "flex",
-                justifyContent: "right",
-                alignItems: "right",
-              }}
-            >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px", marginRight: "10px" }}
+              <Grid
+                item
+                xs={12}
                 sx={{
-                  backgroundColor: "#634A9E",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#6e52ae" },
+                  display: "flex",
+                  justifyContent: "right",
+                  alignItems: "right",
                 }}
-                onClick={AgregarRegistro}
               >
-                Guardar
-              </Button>
+                <Button
+                  type="submit"
+                  startIcon={<Icon>checked</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px", marginRight: "10px" }}
+                  sx={{
+                    backgroundColor: "#634A9E",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#6e52ae" },
+                  }}
+                  onClick={GuardarColores}
+                >
+                  Guardar
+                </Button>
 
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px" }}
-                sx={{
-                  backgroundColor: "#DAD8D8",
-                  color: "black",
-                  "&:hover": { backgroundColor: "#BFBABA" },
-                }}
-                onClick={CerrarCollapseAgregar}
-              >
-                Cancelar
-              </Button>
+                <Button
+                  startIcon={<Icon>close</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px" }}
+                  sx={{
+                    backgroundColor: "#DAD8D8",
+                    color: "black",
+                    "&:hover": { backgroundColor: "#BFBABA" },
+                  }}
+                  onClick={VisibilidadTabla}
+                >
+                  Cancelar
+                </Button>
+              </Grid>
             </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
+          </CardContent>
+        </Collapse>
+      </form>
       {/* Collapse para el formulario de agregar un registro fin*/}
 
-      {/* Collapse para el formulario de editar un registro inicio*/}
-      <Collapse in={mostrarEdit}>
-        <CardContent
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={6} marginTop={"30px"}>
-              <Controller
-                render={({ field }) => (
-                  <FormControl error={!!errors.codigos} fullWidth={true}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Código
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      error={!!errors.codigos}
-                      placeholder="Ingrese el código"
-                      value={codigos}
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                )}
-                name="codigos"
-                control={control}
-              />
-            </Grid>
-
-            <Grid item xs={6} marginTop={"30px"}>
-              <Controller
-                render={({ field }) => (
-                  <FormControl error={!!errors.coloes} fullWidth={true}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Nombre del Color
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      error={!!errors.colores}
-                      value={colores}
-                      placeholder="Ingrese el nombre"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                )}
-                name="colores"
-                control={control}
-              />
-            </Grid>
-
-            <Grid
-              item
-              xs={12}
-              sx={{
-                display: "flex",
-                justifyContent: "right",
-                alignItems: "right",
-              }}
-            >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px", marginRight: "10px" }}
-                sx={{
-                  backgroundColor: "#634A9E",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#6e52ae" },
-                }}
-                onClick={EditarRegistro}
-              >
-                Guardar
-              </Button>
-
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px" }}
-                sx={{
-                  backgroundColor: "#DAD8D8",
-                  color: "black",
-                  "&:hover": { backgroundColor: "#BFBABA" },
-                }}
-                onClick={CerrarCollapseEditar}
-              >
-                Cancelar
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
-
-      {/* Collapse para mostrar los detalles de un registro inicio*/}
-      <Collapse in={mostrarDetalles}>
-        <CardContent
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <h2>Detalles del Color</h2>
-            </Grid>
-            <Grid item xs={12} style={{ marginBottom: "25px" }}>
-              <Box sx={{ display: "flex", flexDirection: "row" }}>
-                <Box sx={{ flex: 1 }}>
-                  <InputLabel htmlFor="id">
-                    <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Id:
-                    </Typography>
-                    <Typography>{id}</Typography>
-                  </InputLabel>
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <InputLabel htmlFor="descripcion">
-                    <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Código del Color:
-                    </Typography>
-                    <Typography>{codigos}</Typography>
-                  </InputLabel>
-                </Box>
-              </Box>
-            </Grid>
-            <Grid item xs={12}>
-              <Box sx={{ display: "flex", flexDirection: "row" }}>
-                <Box sx={{ flex: 1 }}>
-                  <InputLabel htmlFor="id">
-                    <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Nombre del Color:
-                    </Typography>
-                    <Typography>{colores}</Typography>
-                  </InputLabel>
-                </Box>
-              </Box>
-            </Grid>
-            <Grid item xs={12}>
-              <table
-                id="detallesTabla"
-                style={{ width: "100%", borderCollapse: "collapse" }}
-              >
-                <thead>
-                  <tr>
-                    <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>edit</Icon>Accion
-                    </th>
-                    <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>person</Icon>Usuario
-                    </th>
-                    <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>date_range</Icon>Fecha y hora
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={tableRowStyle}>
-                    <td style={tableCellStyle}>
-                      <strong>Creación</strong>
-                    </td>
-                    <td style={tableCellStyle}>Usuario Creación</td>
-                    <td style={tableCellStyle}>00/00/0000</td>
-                  </tr>
-                  <tr style={tableRowStyle}>
-                    <td style={tableCellStyle}>
-                      <strong>Modificación</strong>
-                    </td>
-                    <td style={tableCellStyle}>Usuario Modificación</td>
-                    <td style={tableCellStyle}>00/00/0000</td>
-                  </tr>
-                </tbody>
-              </table>
-            </Grid>
-            <br></br>
-            <Grid item xs={12}>
-              <div className="card-footer">
-                <Button
-                  variant="contained"
-                  onClick={CerrarCollapseDetalles}
-                  startIcon={<Icon>arrow_back</Icon>}
-                >
-                  Regresar
-                </Button>
-              </div>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
-      {/* Collapse para mostrar los detalles de un registro fin*/}
-
-      {/* Dialog para eliminar un registro inicio*/}
+      {/* Inicia del Dialog(Modal) Eliminar */}
       <Dialog
         open={Eliminar}
-        fullWidth={true}
+        fullWidth="md"
         onClose={DialogEliminar}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
@@ -917,7 +567,139 @@ const ToastSuccess =() => {
           </Grid>
         </DialogActions>
       </Dialog>
-      <ToastContainer />
+      {/* Fin del Dialog(Modal) Eliminar */}
+
+
+      {/* Inicia del collapse Detalles */}
+      <Collapse in={mostrarDetalles}>
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-center",
+          }}
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: "0px", marginBottom: "10px" }}>
+                <Chip label="Detalles del Color" />
+              </Divider>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id del Color:
+                  </Typography>
+                  <Typography>{DatosDetalles["colr_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre del Color:
+                  </Typography>
+                  <Typography>{DatosDetalles["colr_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+            </Grid>
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>
+                      Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>
+                      Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>
+                        date_range
+                      </Icon>
+                      Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioNombreCreacion"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["colr_FechaCreacion"]
+                        ? new Date(
+                          DatosDetalles["colr_FechaCreacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioNombreModificacion"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["colr_FechaModificacion"]
+                        ? new Date(
+                          DatosDetalles["colr_FechaModificacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
+              <div className="card-footer">
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    CollapseDetalles();
+                  }}
+                  startIcon={<Icon>arrow_back</Icon>}
+                >
+                  Regresar
+                </Button>
+              </div>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Collapse>
+      {/* Fin del Collapse Detalles */}
+
     </Card>
   );
 }

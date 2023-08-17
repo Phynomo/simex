@@ -5,20 +5,12 @@ import {
   Card,
   CardContent,
   CardMedia,
-  DialogTitle,
-  DialogContentText,
-  DialogContent,
-  DialogActions,
-  Dialog,
-  DataGrid,
   MenuItem,
-  Menu,
   Box,
   Collapse,
   Typography,
   Select,
   Grid,
-  GridToolbar,
   Stack,
   Button,
   FormControl,
@@ -27,19 +19,58 @@ import {
   InputAdornment,
   InputLabel,
   TextField,
-  esES,
-  FormLabel,
-  Autocomplete,
 } from "@mui/material";
-import * as yup from "yup";
-import { yupResolver } from "@hookform/resolvers/yup";
 import SearchIcon from "@mui/icons-material/Search";
 import { useForm, Controller } from "react-hook-form";
 import { Badge, Dropdown, Space, Table } from "antd";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+
 import axios from 'axios';
+import instance from "src/app/auth/services/jwtService/jwtService";
 import { bool } from "prop-types";
+import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+
+//import Toast
+import "react-toastify/dist/ReactToastify.css";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+
+//Import service
+import EstadosCivilesServices from "./EstadosCivilesService";
+
+const iconStyle = {
+  marginRight: "5px",
+  verticalAlign: "middle",
+  color: "#634a9e",
+};
+
+const tableRowStyle = {
+  "&:hover": {
+    backgroundColor: "coral",
+  },
+};
+
+const tableCellStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+};
+
+const tableHeaderStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+  backgroundColor: "#f2f2f2",
+};
 
 function EstadosCivilesIndex() {
   //Constante para la busqueda del datatable
@@ -54,58 +85,21 @@ function EstadosCivilesIndex() {
   //Constante para las filas que tendrá cada paginación del datatable
   const [filas, setFilas] = React.useState(10);
 
-  //Constante de los valores de los textfield de la pantalla
-  const [id, setid] = useState("");
-  const [estadocivil, setEstadoCivil] = useState("");
-  const [usuarioCreacion, setUsuarioCreacion] = useState("");
-  const [FechaCreacion, setFechaCreacion] = useState();
-  const FechaCreacionForm = new Date(FechaCreacion).toLocaleString();
+  //Constante para la data de 
+  const [data, setData] = useState([]);
 
-
-
-  //Constante solo para que quitar el error de los textfield no controlados
-  const [message, setMessage] = useState();
-
-  //Constante para asignar los valores a la tabla y mapear
-  const [DataTabla, setDataTabla] = useState([])
-
+  const [DatosDetalles, setDatosDetalles] = useState({});
   //Hook UseEffect para que cargue los datos de un solo cuando inicice la pantalla
   useEffect(() => {
-    CargarDatosTabla()
+    EstadosCivilesGetData()
   }, []);
+  
 
-  //Constante para cargar datos a las tablas
-  const CargarDatosTabla = async () => {
-    try {
-      const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/EstadosCiviles/Listar', {
-        headers: customHeaders,
-      });
-      console.log(response)
-      const rows = response.data.data.map((item, index) => {
-        return {
-          key: index,
-          id: item.escv_Id,
-          estadocivil: item.escv_Nombre,
-          usuarioCreacion: item.usua_UsuarioCreacion,
-          FechaCreacion: item.escv_FechaCreacion
-        }
-      });
-      setDataTabla(rows);
-    } catch (error) {
-    }
-  };
-
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (id) => {
-    const Detalles = DataTabla.find(registro => registro.id === id);
-
-    setid(Detalles.id);
-    setEstadoCivil(Detalles.estadocivil);
-    setUsuarioCreacion(Detalles.usuarioCreacion);
-    setFechaCreacion(Detalles.FechaCreacion)
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos);
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+    handleClose(datos.escv_Id);
   };
 
   //Constante para el cerrrar las opciones del boton de opciones
@@ -116,40 +110,33 @@ function EstadosCivilesIndex() {
     }));
   };
 
-  //Constante abrir el collapse de los detalles de la pantalla
-  const handleDetails = (id) => {
-    DetallesTabla(id);
-    MostrarCollapseDetalles();
-    handleClose(id);
-  };
-
   //Constante para el boton de opciones
   const [anchorEl, setAnchorEl] = useState({});
 
   //Constante de las columnas del index
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      sorter: (a, b) => a.id - b.id, //sorting para Numeros
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
     },
     {
       title: "Estado Civil",
-      dataIndex: "estadocivil",
-      key: "estadocivil",
-      sorter: (a, b) => a.estadocivil.localeCompare(b.estadocivil), //sorting para Letras
+      dataIndex: "escv_Nombre",
+      key: "escv_Nombre",
+      sorter: (a, b) => a.escv_Nombre.localeCompare(b.escv_Nombre), //sorting para Letras
     },
     {
       title: "Acciones",
       key: "operation",
       render: (params) => (
-        <div key={params.id}>
+        <div key={params.escv_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.escv_Id}`}
               aria-haspopup="true"
-              onClick={() => handleDetails(params.id)}
+              onClick={() => handleDetails(params)}
               variant="contained"
               style={{
                 borderRadius: "10px",
@@ -166,6 +153,14 @@ function EstadosCivilesIndex() {
     },
   ];
 
+  const EstadosCivilesGetData = async () => {
+    try {
+      setData(await EstadosCivilesServices.listar());
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
   //Constante para el textfield de busqueda
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
@@ -174,22 +169,27 @@ function EstadosCivilesIndex() {
   //Constante que detecta el cambio de las filas que se mostraran en el index
   const handleChange = (event) => {
     setFilas(event.target.value);
-    setMessage(event.target.value);
   };
 
   //Constantes de los campos que se utilizaran para filtrar datos
-  const camposToFilter = ["id", "estadocivil"];
+  const camposToFilter = ["key", "escv_Nombre"];
 
   //Constante que ayuda a filtrar el datatable
-  const filteredRows = DataTabla.filter((row) => {
+  const filteredRows = data.filter((row) => {
     if (searchText === "") {
-      return true;  // Mostrar todas las filas si el buscador está vacío
+      return true; // Mostrar todas las filas si el buscador está vacío
     }
 
     for (const [key, value] of Object.entries(row)) {
       if (camposToFilter.includes(key)) {
-        const formattedValue = typeof value === 'number' ? value.toString() : value.toString().toLowerCase();
-        const formattedSearchText = typeof searchText === 'number' ? searchText.toString() : searchText.toLowerCase();
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
         if (formattedValue.includes(formattedSearchText)) {
           return true;
         }
@@ -198,60 +198,8 @@ function EstadosCivilesIndex() {
     return false;
   });
 
-  //Constante para mostrar el collapse de detalles un registro
-  const MostrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-  //Constante para cerrar el collapse de detalles
-  const CerrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-  //Constante cuando se hace click para el boton de opciones
-  const handleClick = (event, id) => {
-    setAnchorEl((prevState) => ({
-      ...prevState,
-      [id]: event.currentTarget,
-    }));
-  };
-
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
-
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
-
   return (
     <Card sx={{ minWidth: 275, margin: "40px" }}>
-      <ToastContainer />
       {/* CardMedia para los header de la carta (Imagenes header con nombres de la carta)*/}
       <CardMedia
         component="img"
@@ -336,47 +284,50 @@ function EstadosCivilesIndex() {
             size="small"
             pagination={{
               pageSize: filas,
-              className: "decoration-white",
+              showSizeChanger: false,
+              className: "custom-pagination",
             }}
           />
-        </div>
+        </div>  
       </Collapse>
       {/* Mostrar tabla index fin*/}
 
-      {/* Mostrar Collapse para los Detalles */}
+      {/* Collapse para mostrar los detalles de un registro inicio*/}
       <Collapse in={mostrarDetalles}>
         <CardContent
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "flex-center",
           }}
         >
           <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <h2>Detalles del Estado Civil</h2>
+            <Grid item xs={12} style={{ marginBottom: '30px' }}>
+              <Divider style={{ marginTop: '0px', marginBottom: '10px' }}>
+                <Chip label="Detalles del Estado Civil" />
+              </Divider>
             </Grid>
-            <Grid item xs={12} style={{marginBottom:"25px", marginLeft:"30px"}}>
-              <Box sx={{ display: "flex", flexDirection: "row" }}>
-                <Box sx={{ flex: 1 }}>
-                  <InputLabel htmlFor="id">
-                    <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Id:
-                    </Typography>
-                    <Typography>{id}</Typography>
-                  </InputLabel>
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <InputLabel htmlFor="embalaje">
-                    <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Estado Civil:
-                    </Typography>
-                    <Typography>{estadocivil}</Typography>
-                  </InputLabel>
-                </Box>
+
+
+            <Grid container spacing={2} style={{ display: "flex", justifyContent: "center", marginBottom: '40px' }}>
+              <Box sx={{ flex: 1, textAlign: "center", }} >
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id del Estado Civil:
+                  </Typography>
+                  <Typography>{DatosDetalles['escv_Id']}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center", }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre del Estado Civil:
+                  </Typography>
+                  <Typography>{DatosDetalles['escv_Nombre']}</Typography>
+                </InputLabel>
               </Box>
             </Grid>
-            <Grid item xs={12}>
+           {/*  <Grid item xs={12}>
               <table
                 id="detallesTabla"
                 style={{ width: "100%", borderCollapse: "collapse" }}
@@ -399,18 +350,24 @@ function EstadosCivilesIndex() {
                     <td style={tableCellStyle}>
                       <strong>Creación</strong>
                     </td>
-                    <td style={tableCellStyle}>{usuarioCreacion}</td>
-                    <td style={tableCellStyle}>{FechaCreacionForm}</td>
+                    <td style={tableCellStyle}>{DatosDetalles['usuarioCreacionNombre']}</td>
+                    <td style={tableCellStyle}>
+                      {DatosDetalles['escv_FechaCreacion']
+                        ? new Date(DatosDetalles['escv_FechaCreacion']).toLocaleString()
+                        : ""}
+                    </td>
                   </tr>
                 </tbody>
               </table>
-            </Grid>
-            <br></br>
+            </Grid> */}
             <Grid item xs={12}>
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarCollapseDetalles}
+                  onClick={() => {
+                    setmostrarIndex(!mostrarIndex);
+                    setmostrarDetalles(!mostrarDetalles);
+                  }}
                   startIcon={<Icon>arrow_back</Icon>}
                 >
                   Regresar
@@ -419,9 +376,7 @@ function EstadosCivilesIndex() {
             </Grid>
           </Grid>
         </CardContent>
-      </Collapse>
-      {/* Collapse para mostrar los detalles de un registro fin*/}
-      <ToastContainer />
+      </Collapse> 
     </Card>
   );
 }

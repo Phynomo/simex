@@ -1,274 +1,207 @@
 /* eslint-disable no-lone-blocks */
 /* eslint-disable prettier/prettier */
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
-import { Button, FormControl, Icon, IconButton, InputAdornment, InputLabel, TextField, Box, Avatar } from '@mui/material';
-import * as React from 'react';
-import Stack from '@mui/material/Stack';
-import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
-import { useState, useRef } from 'react';
-import SearchIcon from '@mui/icons-material/Search';
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
+import {
+  Button,
+  FormControl,
+  Icon,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  TextField,
+  Box,
+  Divider,
+  Chip,
+} from "@mui/material";
+import * as React from "react";
+import Stack from "@mui/material/Stack";
+import { useState, useRef, useEffect } from "react";
+import SearchIcon from "@mui/icons-material/Search";
 
-import Zoom from '@mui/material/Zoom';
-import Grow from '@mui/material/Grow';
+import LoadingIcon from "src/styles/iconoCargaTabla";
 
-import Collapse from '@mui/material/Collapse';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
+import Collapse from "@mui/material/Collapse";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import Select from "@mui/material/Select";
 
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import { Table, Tag, Image } from "antd";
 
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import { Visibility } from '@material-ui/icons';
-import * as yup from 'yup';
-import { useForm, Controller } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import Alert from '@mui/material/Alert';
-import Swal from 'sweetalert2'
-import FormHelperText from '@mui/material/FormHelperText';
-import FormLabel from '@mui/material/FormLabel';
+import "react-toastify/dist/ReactToastify.css";
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+import "src/styles/custom-pagination.css";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+import revisionCalidadService from "./RevisionCalidadService";
+import History from "src/@history/@history";
 
-import { DownOutlined } from '@ant-design/icons';
-import { Badge, Dropdown, Space, Table } from 'antd';
-import { keyBy } from 'lodash';
-
-import { DateTimePicker } from '@mui/x-date-pickers';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
-const defaultRevisionValues = {
-  image: null,
-  cantidad: '',
-  fechaRevision: '',
-  observaciones: '',
-  codigoproceso: '',
-  scrap: false,
-
-};
-
-const RevisionSchema = yup.object().shape({
-  image: yup.string().required(''),
-  cantidad: yup.string().required(''),
-  fechaRevision: yup.string().nullable().required(''),
-  observaciones: yup.string().required(''),
-  codigoproceso: yup.string().required(''),
-  scrap: yup.bool().required(''),
-
-});
-
-function Revision_de_Calidad_Index() {
-  const [searchText, setSearchText] = useState('');
+function RevisionCalidadIndex() {
+  const [searchText, setSearchText] = useState("");
   const [mostrarIndex, setmostrarIndex] = useState(true);
   const [mostrarAdd, setmostrarAdd] = useState(false);
   const [Eliminar, setEliminar] = useState(false);
+  const [DatosDetalles, setDatosDetalles] = useState({});
 
-  const [isObservacionesValid, setIsObservacionesValid] = useState(true);
   const [mostrarEditar, setmostrarEditar] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
-  const [cate, setcate] = useState("");
-  const [id, setid] = useState("");
-  const [image, setImage] = useState(null);
-  const [cantidad, setcantidad] = useState("");
-  const [fechaRevision, setfechaRevision] = useState("");
-  const [observaciones, setobservaciones] = useState("");
-  const [codigoproceso, setcodigoproceso] = useState("");
-  const [scrap, setscrap] = useState("");
-  const fileInputRef = useRef(null);
+  const [anchorEl, setAnchorEl] = useState({});
+
+  const [filas, setFilas] = React.useState(10);
 
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
   };
 
-  const [anchorEl, setAnchorEl] = useState({});
-
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (rowId, codigoproceso, fechaRevision, cantidad, observaciones, scrap) => {
-    setid(rowId);
-    setcodigoproceso(codigoproceso);
-    setfechaRevision(fechaRevision);
-    setcantidad(cantidad);
-    setobservaciones(observaciones);
-    setscrap(scrap);
+  const handleClick = (event, id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: event.currentTarget,
+    }));
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        setImage(reader.result);
-      };
-    } else {
-      ToastWarningImagen();
+  const handleClose = (id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: null,
+    }));
+  };
+
+  const handleEdit = (params) => {
+    handleClose(params.reca_Id);
+  };
+
+  const handleDetails = (params) => {
+    setDatosDetalles(params);
+    MostrarDetalles();
+    handleClose(params.reca_Id);
+  };
+
+  const handleDelete = (params) => {
+    DialogEliminar();
+    handleClose(params.reca_Id);
+  };
+
+  const handleChange = (event) => {
+    setFilas(event.target.value);
+  };
+
+  /*Columnas de la tabla*/
+  const columns = [
+    {
+      title: "ID",
+      dataIndex: "key",
+      key: "key",
+    },
+    // {
+    //   title: "Nº Revision",
+    //   dataIndex: "reca_Id",
+    //   key: "reca_Id",
+    //   sorter: (a, b) => a.reca_Id.localeCompare(b.reca_Id), //sorting para Letras
+    // },
+    {
+      title: "Descripcion",
+      dataIndex: "reca_Descripcion",
+      key: "reca_Descripcion",
+      sorter: (a, b) => a.reca_Descripcion.localeCompare(b.reca_Descripcion), //sorting para Letras
+    },
+    {
+      title: "Fecha de revision",
+      dataIndex: "reca_FechaRevision",
+      key: "reca_FechaRevision",
+      render: (text, record) =>
+        `${new Date(record.reca_FechaRevision).toLocaleString()}`, // sirve para unir textos
+      sorter: (a, b) =>
+        a.reca_FechaRevision.localeCompare(b.reca_FechaRevision), //sorting para Letras
+    },
+    {
+      title: "Contiene scrap",
+      dataIndex: "reca_Scrap",
+      key: "reca_Scrap",
+      render: (text, record) => {
+        return record.reca_Scrap ? (
+          <Tag color="red">Si</Tag>
+        ) : (
+          <Tag color="green">No</Tag>
+        );
+      },
+      sorter: (a, b) => a.reca_Scrap.localeCompare(b.reca_Scrap), //sorting para Letras
+    },
+    {
+      title: "Acciones",
+      key: "operation",
+      render: (params) => (
+        <div key={params.reca_Id}>
+          <Stack direction="row" spacing={1}>
+            <Button
+              aria-controls={`menu-${params.reca_Id}`}
+              aria-haspopup="true"
+              onClick={(e) => handleClick(e, params.reca_Id)}
+              variant="contained"
+              style={{
+                borderRadius: "10px",
+                backgroundColor: "#634A9E",
+                color: "white",
+              }}
+              startIcon={<Icon>menu</Icon>}
+            >
+              Opciones
+            </Button>
+            <Menu
+              id={`menu-${params.reca_Id}`}
+              anchorEl={anchorEl[params.reca_Id]}
+              keepMounted
+              open={Boolean(anchorEl[params.reca_Id])}
+              onClose={() => handleClose(params.reca_Id)}
+            >
+              <MenuItem onClick={() => handleEdit(params)}>
+                <Icon>edit</Icon> Editar
+              </MenuItem>
+              <MenuItem onClick={() => handleDetails(params)}>
+                <Icon>visibility</Icon> Detalles
+              </MenuItem>
+              <MenuItem onClick={() => handleDelete(params)}>
+                <Icon>delete</Icon> Eliminar
+              </MenuItem>
+            </Menu>
+          </Stack>
+        </div>
+      ),
+    },
+  ];
+
+  const [data, setData] = useState([]);
+
+  const RevisionCalidadGetData = async () => {
+    try {
+      setData(await revisionCalidadService.listar());
+    } catch (error) {
+      console.log(error.message);
     }
   };
 
-  const ToastWarningImagen = () => {
-    toast.warning("El archivo tiene que ser una imagen.",{
-      theme: 'dark',
-      //position: toast.POSITION.BOTTOM_RIGHT,
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 3000,
-      closeOnClick: true
-    });
+  useEffect(() => {
+    RevisionCalidadGetData();
+  }, []);
+
+  {
+    /* Función para mostrar la tabla y mostrar agregar */
   }
-
-  const ToastWarningImagenSeleccionar = () => {
-    toast.warning("La imagen es requerida.",{
-      theme: 'dark',
-      //position: toast.POSITION.BOTTOM_RIGHT,
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 3000,
-      closeOnClick: true
-    });
-  }
-
-    const handleClick = (event, id) => {
-      setAnchorEl(prevState => ({
-        ...prevState,
-        [id]: event.currentTarget,
-      }));
-    };
-  
-    const handleClose = (id) => {
-      setAnchorEl(prevState => ({
-        ...prevState,
-        [id]: null,
-      }));
-    };
-  
-
-    const handleEdit = (id, codigoproceso, fechaRevision, cantidad, observaciones, scrap) => {
-      setcodigoproceso(codigoproceso);
-      setfechaRevision(fechaRevision);
-      setcantidad(cantidad);
-      setobservaciones(observaciones);
-      setscrap(scrap);
-      setid(id);
-      MostrarEditar();
-      handleClose(id);
-    };
-  
-    const handleDetails  = (id, codigoproceso, fechaRevision, cantidad, observaciones, scrap) => {
-      DetallesTabla(id, codigoproceso, fechaRevision, cantidad, observaciones, scrap);
-      MostrarDetalles();
-      handleClose(id);
-    };
-  
-    const handleDelete = (id) => {
-      DialogEliminar();
-      handleClose(id);
-    };
-  
-    const [filas, setFilas] = React.useState(10);
-  
-    const handleChange = (event) => {
-      setFilas(event.target.value);
-    };
-  
-  
-    /*Columnas de la tabla*/
-    const columns = [
-      {
-        title: 'ID',
-        dataIndex: 'id',
-        key: 'id',
-      },
-      {
-        title: 'Código del proceso',
-        dataIndex: 'codigoproceso',
-        key: 'codigoproceso',
-        sorter: (a, b) => a.codigoproceso.localeCompare(b.codigoproceso), //sorting para Letras
-      },
-      {
-        title: 'Cantidad',
-        dataIndex: 'cantidad',
-        key: 'cantidad',
-        sorter: (a, b) => a.cantidad.localeCompare(b.cantidad), //sorting para Letras
-      },
-      {
-        title: 'Fecha de revisión',
-        dataIndex: 'fechaRevision',
-        key: 'fechaRevision',
-        sorter: (a, b) => a.fechaRevision.localeCompare(b.fechaRevision), //sorting para Letras
-      },
-      {
-        title: 'Acciones',
-        key: 'operation',
-        render: (params) =>
-          <div key={params.id}>
-            <Stack direction="row" spacing={1}>
-              <Button
-                aria-controls={`menu-${params.id}`}
-                aria-haspopup="true"
-                onClick={(e) => handleClick(e, params.id)}
-                variant="contained"
-                style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
-                startIcon={<Icon>menu</Icon>}
-              >
-                Opciones
-              </Button>
-              <Menu
-                id={`menu-${params.id}`}
-                anchorEl={anchorEl[params.id]}
-                keepMounted
-                open={Boolean(anchorEl[params.id])}
-                onClose={() => handleClose(params.id)}
-              >
-                <MenuItem onClick={() => handleEdit(params.id, params.codigoproceso, params.cantidad, params.fechaRevision, params.observaciones, params.scrap, params.imagen)}>
-                  <Icon>edit</Icon> Editar
-                </MenuItem>
-                <MenuItem onClick={() => handleDetails(params.id, params.codigoproceso, params.cantidad, params.fechaRevision, params.observaciones, params.scrap, params.imagen)}>
-                  <Icon>visibility</Icon> Detalles
-                </MenuItem>
-                <MenuItem onClick={() => handleDelete(params.id)}>
-                  <Icon>delete</Icon> Eliminar
-                </MenuItem>
-              </Menu>
-            </Stack>
-          </div>
-        ,
-      },
-    ];
-  
-  
-    {/* Validaciones de la pantalla de crear*/ }
-   
-
-
-  {/*Datos de la tabla*/  }
-  const data = [];
-  for (let i = 1; i < 30; ++i) {
-    data.push({
-      key: i.toString(),
-      id: i.toString(),
-      codigoproceso: 'BMW02832 ',
-      cantidad: '80 ',
-      fechaRevision: '10-10-2010',
-    });
-  }
-
-  {/* Función para mostrar la tabla y mostrar agregar */ }
-  const VisibilidadTabla = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAdd(!mostrarAdd);
-    reset(defaultRevisionValues);
-
+  const CrearNuevo = () => {
+    History.push('RevisionCalidad/Crear');
   };
 
   //Constante para mostrar el collapse de editar un registro
@@ -284,173 +217,23 @@ function Revision_de_Calidad_Index() {
     setmostrarDetalles(!mostrarDetalles);
   };
 
-  // Cerrar un Editar
-  const CerrarEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultRevisionValues);
-
-  };
-
-  // Cerrar un Detalles
-  const CerrarDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-    reset(defaultRevisionValues);
-
-  };
-
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
-  {/* Filtrado de datos */ }
+  {
+    /* Filtrado de datos */
+  }
   const filteredRows = data.filter((row) =>
-      Object.values(row).some((value) =>
-        typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase())
-      )
-    );
-
-
-  const { handleSubmit, register, reset, control, watch, formState } = useForm({
-    defaultRevisionValues,
-    mode: 'all',
-    resolver: yupResolver(RevisionSchema),
-  });
-
-  const { isValid, dirtyFields, errors } = formState;
-
-  const onSubmit = (data) => {
-    if (data.codigoproceso != null || data.cantidad != null || data.observaciones != null) {
-      if (data.codigoproceso.trim() === '' || data.cantidad.trim() === '' || data.observaciones.trim() === '') {
-        
-        toast.error('Debe completar los campos requeridos.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-      } else {
-
-        VisibilidadTabla();
-        toast.success('Datos ingresados correctamente.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-
-      }
-    } else {
-       
-      toast.error('Debe completar los campos requeridos.', {
-        theme: 'dark',
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
-    }
-  };
-
-   //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-   const ValidacionesEditar = (data) => {
-    if (data.codigoproceso != null || data.cantidad != null || data.observaciones != null) {
-      if (data.codigoproceso.trim() === '' || data.cantidad.trim() === '' || data.observaciones.trim() === '') {
-        toast.error('Debe completar los campos requeridos.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-      } else {
-        MostrarEditar();
-        toast.success('Datos ingresados correctamente.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-      }
-    } else {
-      toast.error('Debe completar los campos requeridos.', {
-        theme: 'dark',
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
-    }
-  };
-
-  const GuardarRevision = () => {
-    const formData = watch();
-    onSubmit(formData);
-    handleSubmit(onSubmit)();
-    reset(defaultRevisionValues);
-  };
-
-  //Constante para ejecutar las validaciones y el envio del formulario en el boton de editar en el collapse de editar
-  const EditarRegistro = () => {
-    const formData = watch();
-    formData.codigoproceso = codigoproceso;
-    formData.cantidad = cantidad;
-    formData.observaciones = observaciones;
-    formData.fechaRevision = fechaRevision;
-    formData.imagen = imagen;
-    formData.scrap = scrap;
-    ValidacionesEditar(formData);
-    setTimeout(() => {
-      reset(defaultRevisionValues);
-      handleSubmit(ValidacionesEditar)();
-    }, "250")
-  };
-
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
-
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
-
+    Object.values(row).some(
+      (value) =>
+        typeof value === "string" &&
+        value.toLowerCase().includes(searchText.toLowerCase())
+    )
+  );
 
   return (
-    <Card sx={{ minWidth: 275, margin: '40px' }}>
-      <ToastContainer/>
+    <Card sx={{ minWidth: 275, margin: "40px" }}>
       <CardMedia
         component="img"
         height="200"
@@ -458,239 +241,6 @@ function Revision_de_Calidad_Index() {
         alt="Encabezado de la carta"
       />
       <Collapse in={mostrarIndex}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
-          {/* Botón de Nuevo */}
-          <Stack direction="row" spacing={1}>
-            <Button
-              startIcon={<Icon>add</Icon>}
-              variant="contained"
-              color="primary"
-              style={{ borderRadius: '10px' }}
-              sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
-              }}
-              onClick={VisibilidadTabla}
-            >
-              Nuevo
-            </Button>
-          </Stack>
-
-          {/* Barra de Busqueda en la Tabla */}
-          <Stack direction="row" spacing={1}>
-              <label className='mt-8'>Filas por página:</label>
-              <FormControl sx={{ minWidth: 50 }} size="small">
-              {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
-              <Select
-                  labelId="demo-select-small-label"
-                  id="demo-select-small"
-                  value={filas}
-                  // label="Filas"  
-                  onChange={handleChange}
-              >
-                  <MenuItem value={10}>10</MenuItem>
-                  <MenuItem value={20}>20</MenuItem>
-                  <MenuItem value={30}>30</MenuItem>
-              </Select>
-
-              </FormControl>
-              {/* Barra de Busqueda en la Tabla */}
-              <TextField
-              style={{ borderRadius: '10px' }}
-              placeholder='Buscar'
-              value={searchText}
-              onChange={handleSearchChange}
-              size="small"
-              variant="outlined"
-              InputProps={{
-                  startAdornment: (
-                  <InputAdornment position="start">
-                      <IconButton edge="start">
-                      <SearchIcon />
-                      </IconButton>
-                  </InputAdornment>
-                  ),
-              }}
-              />
-          </Stack>
-        </CardContent>
-      </Collapse>
-
-      {/* Tabla */}
-      <Collapse in={mostrarIndex}>
-      <div className='center' style={{ width: '95%', margin: 'auto' }}>
-        <Table
-            columns={columns}
-            dataSource={filteredRows}
-            size="small"
-            pagination={{
-            pageSize: filas
-            , className: 'decoration-white'
-            }}
-        />
-        </div>
-      </Collapse>
-
-
-      {/* Formulario Agregar */}
-      <Collapse in={mostrarAdd}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Grid container spacing={3}>
-          <Grid item xs={4}>
-              <div className='little-profilePhynomo text-center'>
-                <div className="pro-imgPhynomo" style={{ marginTop: "0", width: '300px', height: '300px', overflow: 'hidden' }}>
-                  {image == null ? <img src={image} alt="user" /> : <img src={image} alt="uploaded image" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />}
-                </div>
-                <button className="btn btn-pill btn-outline-light" type='button' onClick={() => fileInputRef.current.click()}>Seleccionar imagen</button>
-                <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
-              </div>
-            </Grid>
-
-
-            {/* Right column for all the TextFields */}
-            <Grid item xs={8} style={{ marginTop: '30px' }}>
-              <Grid container spacing={3}>
-                {/* Left column for TextFields */}
-                <Grid item xs={6}>
-                <div className="mt-1 mb-16" style={{width: '305px'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      style={{ borderRadius: '10px'}}
-                      {...field}
-                      label="Código de proceso"
-                      variant="outlined"
-                      error={!!errors.codigoproceso}
-
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="codigoproceso"
-                  control={control}
-                />
-              </div>
-
-              <div className="mt-1 mb-16" style={{width: '305px'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      style={{ borderRadius: '10px'}}
-                      {...field}
-                      label="Cantidad"
-                      variant="outlined"
-                      error={!!errors.cantidad}
-                      type='number'
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="cantidad"
-                  control={control}
-                />
-              </div>
-
-              <div className="mt-1 mb-16" style={{width: '305px'}}>
-            
-                <Controller
-                  name="fechaRevision"
-                  control={control}
-                  render={({ field: { onChange, value, onBlur } }) => (
-                    <DateTimePicker
-                    value={value}
-                      onChange={onChange}
-                      required
-                      label='Fecha de revisión'
-                      renderInput={(_props) => (
-                        <TextField
-                          className="w-full"
-                          {..._props}
-                          onBlur={onBlur}
-                          error={!!errors.fechaRevision}
-                        />
-                      )}
-                      className="w-full"
-                    />
-                  )}
-                />
-              </div>
-
-                </Grid>
-
-                <Grid item xs={6} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FormControl fullWidth>
-                    <FormControlLabel
-                      control={<Switch sx={{ '&.Mui-checked': { color: '#634A9E' } }} />}
-                      label="SCRAP"
-                      labelPlacement="top"
-                    />
-                  </FormControl>
-                </Grid>
-
-              </Grid>
-
-              <Grid item xs={12}>
-                
-              <div className="mt-1 mb-16" style={{width: '600px'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      style={{ borderRadius: '10px'}}
-                      {...field}
-                      label="Observaciones"
-                      variant="outlined"
-                      error={!!errors.observaciones}
-
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="observaciones"
-                  control={control}
-                />
-              </div>
-              </Grid>
-
-
-            </Grid>
-
-            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>check</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
-                sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
-                }}
-                onClick={GuardarRevision}
-              >
-                Guardar
-              </Button>
-
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={VisibilidadTabla}
-              >
-                Cancelar
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
-       {/* Formulario Agregar */}
-
-       {/* Collapse para el formulario de editar un registro inicio*/}
-    <Collapse in={mostrarEditar}>
         <CardContent
           sx={{
             display: "flex",
@@ -698,169 +248,81 @@ function Revision_de_Calidad_Index() {
             alignItems: "flex-start",
           }}
         >
-          <Grid container spacing={3}>
-           
-          <Grid item xs={4}>
-              <div className='little-profilePhynomo text-center'>
-                <div className="pro-imgPhynomo" style={{ marginTop: "0", width: '300px', height: '300px', overflow: 'hidden' }}>
-                  {image == null ? <img src={image} alt="user" /> : <img src={image} alt="uploaded image" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />}
-                </div>
-                <button className="btn btn-pill btn-outline-light" type='button' onClick={() => fileInputRef.current.click()}>Seleccionar imagen</button>
-                <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
-              </div>
-            </Grid>
-
-
-            {/* Right column for all the TextFields */}
-            <Grid item xs={8} style={{ marginTop: '30px' }}>
-              <Grid container spacing={3}>
-                {/* Left column for TextFields */}
-                <Grid item xs={6}>
-                <div className="mt-1 mb-16" style={{width: '305px'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      style={{ borderRadius: '10px'}}
-                      {...field}
-                      label="Código de proceso"
-                      variant="outlined"
-                      error={!!errors.codigoproceso}
-                      value={codigoproceso}
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="codigoproceso"
-                  control={control}
-                />
-              </div>
-
-              <div className="mt-1 mb-16" style={{width: '305px'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      style={{ borderRadius: '10px'}}
-                      {...field}
-                      label="Cantidad"
-                      variant="outlined"
-                      error={!!errors.cantidad}
-                      value={cantidad}
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="cantidad"
-                  control={control}
-                />
-              </div>
-
-              <div className="mt-1 mb-16" style={{width: '305px'}}>
-            
-                <Controller
-                  name="fechaRevision"
-                  control={control}
-                  render={({ field: { onChange, value, onBlur } }) => (
-                    <DateTimePicker
-                    value={value}
-                      onChange={onChange}
-                      required
-                      label='Fecha de revisión'
-                      renderInput={(_props) => (
-                        <TextField
-                          className="w-full"
-                          {..._props}
-                          onBlur={onBlur}
-                          error={!!errors.fechaRevision}
-                        />
-                      )}
-                      className="w-full"
-                    />
-                  )}
-                />
-              </div>
-
-                </Grid>
-
-                <Grid item xs={6} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FormControl fullWidth>
-                    <FormControlLabel
-                      control={<Switch sx={{ '&.Mui-checked': { color: '#634A9E' } }} />}
-                      label="SCRAP"
-                      labelPlacement="top"
-                    />
-                  </FormControl>
-                </Grid>
-
-              </Grid>
-
-              <Grid item xs={12}>
-                
-              <div className="mt-1 mb-16" style={{width: '600px'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      style={{ borderRadius: '10px'}}
-                      {...field}
-                      label="Observaciones"
-                      variant="outlined"
-                      error={!!errors.observaciones}
-
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="observaciones"
-                  control={control}
-                />
-              </div>
-              </Grid>
-
-
-            </Grid>
-          
-            <Grid
-              item
-              xs={12}
+          {/* Botón de Nuevo */}
+          <Stack direction="row" spacing={1}>
+            <Button
+              startIcon={<Icon>add</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: "10px" }}
               sx={{
-                display: "flex",
-                justifyContent: "right",
-                alignItems: "right",
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
               }}
+              onClick={CrearNuevo}
             >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px", marginRight: "10px" }}
-                sx={{
-                  backgroundColor: "#634A9E",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#6e52ae" },
-                }}
-                onClick={EditarRegistro}
-              >
-                Editar
-              </Button>
+              Nuevo
+            </Button>
+          </Stack>
 
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px" }}
-                sx={{
-                  backgroundColor: "#DAD8D8",
-                  color: "black",
-                  "&:hover": { backgroundColor: "#BFBABA" },
-                }}
-                onClick={CerrarEditar}
+          {/* Barra de Busqueda en la Tabla */}
+          <Stack direction="row" spacing={1}>
+            <label className="mt-8">Filas por página:</label>
+            <FormControl sx={{ minWidth: 50 }} size="small">
+              {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
+              <Select
+                labelId="demo-select-small-label"
+                id="demo-select-small"
+                value={filas}
+                // label="Filas"
+                onChange={handleChange}
               >
-                Cancelar
-              </Button>
-            </Grid>
-          </Grid>
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
+              </Select>
+            </FormControl>
+            {/* Barra de Busqueda en la Tabla */}
+            <TextField
+              style={{ borderRadius: "10px" }}
+              placeholder="Buscar"
+              value={searchText}
+              onChange={handleSearchChange}
+              size="small"
+              variant="outlined"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <IconButton edge="start">
+                      <SearchIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Stack>
         </CardContent>
+
+        <div className="center" style={{ width: "95%", margin: "auto" }}>
+          <Table
+            columns={columns}
+            dataSource={filteredRows}
+            size="small"
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
+            }}
+            pagination={{
+              pageSize: filas,
+              showSizeChanger: false,
+              className: "custom-pagination",
+            }}
+          />
+        </div>
       </Collapse>
-      {/* Collapse para el formulario de editar un registro fin*/}
 
       {/* Collapse para mostrar los detalles de un registro inicio*/}
       <Collapse in={mostrarDetalles}>
@@ -868,108 +330,205 @@ function Revision_de_Calidad_Index() {
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "flex-center",
           }}
-        >   
-         <Grid container spacing={3}> 
-         <Grid item xs={12}>
-              <h2>Detalles de la Categoría</h2>   
-              </Grid>   
-              <Grid item xs={12}>   
-                <Box sx={{ display: "flex", flexDirection: "row" }}>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="id">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Revisión Id:
-                      </Typography>
-                      <Typography>{id}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Código de proceso revisado:
-                      </Typography>
-                      <Typography>{codigoproceso}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Cantidad:
-                      </Typography>
-                      <Typography>{cantidad}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Fecha de revisión:
-                      </Typography>
-                      <Typography>{fechaRevision}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Observaciones:
-                      </Typography>
-                      <Typography>{observaciones}</Typography>
-                    </InputLabel>
-                  </Box>
-                </Box>
-                </Grid> 
-                <br></br>   
-                <Grid item xs={12}>            
-                      <table
-                        id="detallesTabla"
-                        style={{ width: "100%", borderCollapse: "collapse" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>edit</Icon>Accion
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>person</Icon>Usuario
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>date_range</Icon>Fecha y
-                              hora
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Creación</strong>
-                            </td>
-                            <td style={tableCellStyle}>Usuario Creación</td>
-                            <td style={tableCellStyle}>00/00/0000</td>
-                          </tr>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Modificación</strong>
-                            </td>
-                            <td style={tableCellStyle}>Usuario Modificación</td>
-                            <td style={tableCellStyle}>00/00/0000</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      </Grid> 
-              <br></br>
-              <Grid item xs={12}>    
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Divider style={{ marginBottom: "10px" }}>
+                <Chip label="Detalles de la revisión de calidad" />
+              </Divider>
+            </Grid>
+
+            <Grid
+              item
+              xs={12}
+              md={6}
+              display={"flex"}
+              justifyContent={"center"}
+              alignContent={"center"}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Imagen de la prenda:
+                  </Typography>
+
+                  <Image
+                    width={200}
+                    fallback="data:image/png;base64,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"
+                    src={DatosDetalles["reca_Imagen"]}
+                  />
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid
+              item
+              xs={12}
+              md={6}
+              display={"flex"}
+              justifyContent={"center"}
+              alignContent={"center"}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Descripcion de la revisión:
+                  </Typography>
+                  <Typography>{DatosDetalles["reca_Descripcion"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              display={"flex"}
+              justifyContent={"center"}
+              alignContent={"center"}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Revisión de calidad Nº:
+                  </Typography>
+                  <Typography>{DatosDetalles["reca_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              display={"flex"}
+              justifyContent={"center"}
+              alignContent={"center"}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id del proceso revisado:
+                  </Typography>
+                  <Typography>{DatosDetalles["ensa_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              display={"flex"}
+              justifyContent={"center"}
+              alignContent={"center"}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Cantidad de prendas afectadas:
+                  </Typography>
+                  <Typography>{DatosDetalles["reca_Cantidad"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              md={6}
+              display={"flex"}
+              justifyContent={"center"}
+              alignContent={"center"}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Es Scrap:
+                  </Typography>
+                  <Typography>
+                    {DatosDetalles["reca_Scrap"] ? (
+                      <Tag color="red">Si</Tag>
+                    ) : (
+                      <Tag color="green">No</Tag>
+                    )}
+                  </Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>
+                      Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>
+                      Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>
+                        date_range
+                      </Icon>
+                      Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usua_UsuarioCreacion"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {new Date(
+                        DatosDetalles["reca_FechaCreacion"]
+                      ).toLocaleString()}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usua_UsuarioModificacion"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["reca_FechaModificacion"]
+                        ? new Date(
+                            DatosDetalles["reca_FechaModificacion"]
+                          ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarDetalles}
+                  onClick={() => {
+                    setmostrarIndex(!mostrarIndex);
+                    setmostrarDetalles(!mostrarDetalles);
+                  }}
                   startIcon={<Icon>arrow_back</Icon>}
                 >
                   Regresar
                 </Button>
               </div>
-              </Grid>
-              </Grid>  
+            </Grid>
+          </Grid>
         </CardContent>
       </Collapse>
       {/* Collapse para mostrar los detalles de un registro fin*/}
-
 
       {/* Dialog eliminar */}
       <Dialog
@@ -988,15 +547,24 @@ function Revision_de_Calidad_Index() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
+          <Grid
+            item
+            xs={12}
+            sx={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "right",
+            }}
+          >
             <Button
               startIcon={<Icon>checked</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px', marginRight: '10px' }}
+              style={{ borderRadius: "10px", marginRight: "10px" }}
               sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
               }}
               onClick={handleDelete}
             >
@@ -1007,10 +575,11 @@ function Revision_de_Calidad_Index() {
               startIcon={<Icon>close</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px' }}
+              style={{ borderRadius: "10px" }}
               sx={{
-                backgroundColor: '#DAD8D8', color: 'black',
-                "&:hover": { backgroundColor: '#BFBABA' },
+                backgroundColor: "#DAD8D8",
+                color: "black",
+                "&:hover": { backgroundColor: "#BFBABA" },
               }}
               onClick={DialogEliminar}
             >
@@ -1019,13 +588,8 @@ function Revision_de_Calidad_Index() {
           </Grid>
         </DialogActions>
       </Dialog>
-      {/* Dialog eliminar */}
-      <ToastContainer/>
     </Card>
   );
 }
 
-export default Revision_de_Calidad_Index;
-
-
-
+export default RevisionCalidadIndex;

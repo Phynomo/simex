@@ -14,7 +14,10 @@ import {
   TextField,
   Avatar,
   Autocomplete,
-  Box
+  Box,
+  FormLabel,
+  Divider,
+  Chip
 } from "@mui/material";
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
@@ -42,232 +45,94 @@ import { Controller, useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { DownOutlined } from '@ant-design/icons';
-import { Badge, Dropdown, Space, Table } from 'antd';
 import { keyBy, values } from 'lodash';
 import { id } from 'date-fns/locale';
-import "src/styles/custom-pagination.css";
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
+//Imports tabla
+import { Badge, Dropdown, Space, Table } from "antd";
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+//Import service
+import CiudadesServices from './CiudadesServices';
+//Import ddls
+import load_DDLs from "src/app/loadDDLs/Load_DDL";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
 
 function CiudadesIndex() {
   const [searchText, setSearchText] = useState('');
   const [mostrarIndex, setmostrarIndex] = useState(true);
   const [mostrarAdd, setmostrarAdd] = useState(false);
-  const [Eliminar, setEliminar] = useState(false);
-  const [anchorEl, setAnchorEl] = useState({});
-  const [PaisDDL, setPaisDDL] = useState([]);
-  const [pais, setPais] = useState('');
-  const [ProvinciaDDL, setProvinciaDDL] = useState([]);
-  const [provincia, setProvincia] = useState('');
-  const [nombreCuidad, setNombreCuidad] = useState("");
-  //Constantes para editar
-  const [paisEditar, setPaisEditar] = useState("");
-  const [provinciaEditar, setProvinciaEditar] = useState("");
-  const [nombreCuidadEditar, setNombreCuidadEditar] = useState("");
-  //Constante para asignar los valores a la tabla y mapear
-  const[DataTabla, setDataTabla] = useState([])
-  //Constante solo para que quitar el error de los textfield no controlados
-  const [message, setMessage] = useState();
-  const [id, setId] = useState("");
-  //Constantes para los Collapse de agregar, editar y detalles 
-  const [mostrarAgregar, setmostrarAgregar] = useState(false);
   const [mostrarEditar, setmostrarEditar] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
-  const [usuariocrea, setusuariocrea] = useState("");
-  const [fechacrea, setfechacrea] = useState("");
-  const [usuariomodifica, setusuariomodifica] = useState("");
-  const [fechamodifica, setfechamodifica] = useState("");
-  const [provcodigo, setprovcodigo] = useState('');
-  const [paiscodigo, setpaiscodigo] = useState('');
-  
+  const [Eliminar, setEliminar] = useState(false);
+  const [anchorEl, setAnchorEl] = useState({});
+
+  //Constante para asignar los valores a la tabla y mapear
+  const [DataTabla, setDataTabla] = useState([])
+
+  const [PaisDDL, setPaisDDL] = useState([]);
+  //Cargado de las variables DDL
+  async function ddls() {
+    setPaisDDL(await load_DDLs.paises());
+  }
+  //Cargado de ddl de provincias
+  const [ProvinciaDDL, setProvinciaDDL] = useState([]);
+  async function ddlProvincia(id) {
+    try{
+      setProvinciaDDL(await load_DDLs.ProvinciasPorPais(id));
+    }catch(error){
+      console.log(error)
+    }
+  }
+
+  //Variable que indica si el usuario a seleccionar crear o editar
+  const [editar, setEditar] = useState(false);
+
+  //Variable que guarda los datos de detalles
+  const [DatosDetalles, setDatosDetalles] = useState({});
+
+
   //Hook UseEffect para que cargue los datos de un solo cuando inicice la pantalla
   useEffect(() => {
-    CargarDatosTabla();
-    CargarDatosDdl();
+    ciudadesGetData();
+    ddls();
   }, []);
 
-  //Constante para cargar los datos de los Dddl
-  const CargarDatosDdl = async () => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    const responseDdl = await axios.get(process.env.REACT_APP_API_URL+'api/Paises/Listar', {
-      headers: customHeaders,
-    });
-      setPaisDDL(
-        responseDdl.data.map(item => ({
-          pais_Id: item.pais_Id,
-          pais: item.pais_Codigo + ' - ' + item.pais_Nombre,
-        }))
-      )
 
-  }
-
-  const CargarProvinciaDDL = async (id) => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    try {
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Provincias/Listar', { headers: customHeaders });
-  
-      const filteredProvincias = response.data.data.filter(item => item.pais_Id === id);
-      const provinciaOptions = filteredProvincias.map(item => ({ pvin_Id: item.pvin_Id, provincia: item.pvin_Nombre }));
-  
-      setProvinciaDDL(provinciaOptions);
-      
-    } catch (error) {
-      console.error("Error cargando provincias:", error);
-    }
-        
-  }
-
-  const CargarProvinciaDDLEditar = async (id) => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    try {
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Provincias/Listar', { headers: customHeaders });
-  
-      const filteredProvincias = response.data.data.filter(item => item.pais_Id === id);
-      const provinciaOptions = filteredProvincias.map(item => ({ pvin_Id: item.pvin_Id, provincia: item.pvin_Nombre }));
-  
-      setProvinciaDDL(provinciaOptions);
-      
-    } catch (error) {
-      console.error("Error cargando provincias:", error);
-    }
-        
-  }
-
-  //Constante para cargar datos a las tablas
-  const CargarDatosTabla = async () => {
-    try {
-    const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      const response = await axios.get(process.env.REACT_APP_API_URL+'api/Ciudades/Listar', {
-        headers: customHeaders,
-      }); 
-      console.log(response)
-      const rows = response.data.data.map((item,index) => {
-        return {
-          key:index,
-          id: item.ciud_Id,
-          nombreCuidad: item.ciud_Nombre,
-          provincia: item.pvin_Nombre,
-          provcodigo: item.pvin_Id,
-          pais: item.pais_Codigo + ' - ' + item.pais_Nombre,
-          usuariocrea: item.usuarioCreacionNombre,
-          usuariomodifica: item.usuarioModificadorNombre,
-          fechacrea: item.ciud_FechaCreacion,
-          fechamodifica: item.ciud_FechaModificacion,
-        }
-      });
-      setDataTabla(rows);
-    } catch (error) {
-    }
-  };
-
-  const ToastErrorApi = () => {
-    toast.warning('Algo salió mal. Inténtelo más tarde', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-    
-  const ToastError = () => {
-    toast.error('Debe completar todos los campos.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastExito = () => {
-    toast.success('Datos ingresados correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastEditar = () => {
-    toast.success('Datos editados correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastInfoWarning = () => {
-    toast.warning('El dato que desea ingresar ya existe.', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const campos = {
-    pais: '',
-    provincia: '',
+  const DefaultCiudades = {
+    id: "",
+    pais: null,
+    provincia: null,
     nombreCuidad: "",
-    usuariocrea: "",
-    fechacrea: "",
-    usuariomodifica: "",
-    fechamodifica: "",
-    provcodigo: '',
-    paisEditar: '',
-    provinciaEditar: '',
-    nombreCuidadEditar: "",
   };
 
   const schema = yup.object().shape({
-    pais: yup.string().required(''),
-    provincia: yup.string().required(''),
-    nombreCuidad: yup.string().required(''),
-    paisEditar: yup.string().required(''),
-    provinciaEditar: yup.string().required(''),
-    nombreCuidadEditar: yup.string().required(''),
+    id: yup.string(),
+    pais: yup.object().required(""),
+    provincia: yup.object().required(""),
+    nombreCuidad: yup.string().trim().required(""),
   });
 
-  const DetallesTabla = (id) => {
-    const Detalles = DataTabla.find(registro => registro.id === id);
-    setId(Detalles.id);
-    setNombreCuidad(Detalles.nombreCuidad);
-    setPais(Detalles.pais);
-    setProvincia(Detalles.provincia);
-    setusuariocrea(Detalles.usuariocrea);
-    setusuariomodifica(Detalles.usuariomodifica);
-    setfechacrea(Detalles.fechacrea);
-    setfechamodifica(Detalles.fechamodifica);
-  };
-  
+
   const { handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
-    campos,
-    mode: 'all', 
+    DefaultCiudades,
+    mode: 'all',
     resolver: yupResolver(schema),
   });
 
-  const { isValid, dirtyFields, errors, touchedFields } = formState;
+  //Validacion de campos vacios y errores
+  const { isValid, dirtyFields, errors } = formState;
+
+  //Datos del formulario
+  const datosWatch = watch();
 
   const handleClick = (event, id) => {
     setAnchorEl(prevState => ({
@@ -284,60 +149,44 @@ function CiudadesIndex() {
   };
 
 
-  const handleEdit = async (id) => {
-    const Editar = DataTabla.find((registro) => registro.id === id);
-    setNombreCuidadEditar(Editar.nombreCuidad);
-    setId(Editar.id);
-    setValue("ciudadEditar", Editar.nombreCuidad);
-    setNombreCuidad(nombreCuidad);
-    setprovcodigo(Editar.provcodigo);
-  
-    try {
-      const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-  
-      const responseProvincias = await axios.get(process.env.REACT_APP_API_URL + 'api/Provincias/Listar', { headers: customHeaders });
-   
-      const provinciaPreseleccionada = responseProvincias.data.data.find(d => d.pvin_Id === Editar.provcodigo);
-      setpaiscodigo(provinciaPreseleccionada.pais_Id);
-   
-      const filteredProvincias = responseProvincias.data.data.filter(item => item.pais_Id === provinciaPreseleccionada.pais_Id);
-      const provinciaOptions = filteredProvincias.map(item => ({ pvin_Id: item.pvin_Id, provincia: item.pvin_Nombre }));
-      setProvinciaDDL(provinciaOptions);
-  
-      MostrarCollapseEditar();
-      handleClose(id);
-    } catch (error) {
-      console.error("Error en handleEdit:", error);
-    }
-  };
-  
+  const handleEdit = async (datos) => {
+    handleClose(datos.ciud_Id);
+    MostrarCollapseEditar()
+    setEditar(true);
+    //insertar aca las variables necesarias en su formulario
+    setValue("id", datos.ciud_Id);
+    setValue("nombreCuidad", datos["ciud_Nombre"]);
+    setValue('pais', { value: datos["pais_Id"], label: datos["pais_Codigo"] + ' - ' + datos["pais_Nombre"] })
+    ddlProvincia(datos["pais_Id"])
+    setValue('provincia', { value: datos["pvin_Id"], label: datos["pvin_Nombre"] })
 
-  const handleDetails = (id) => {
-    DetallesTabla(id);
+  };
+
+
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos);
     MostrarCollapseDetalles();
-    handleClose(id);
+    handleClose(datos.ciud_Id);
   };
 
-   //Constante para mostrar el collapse de agregar un registro
-   const MostrarCollapseAgregar = () => {
+  //Constante para mostrar el collapse de agregar un registro
+  const MostrarCollapseAgregar = () => {
     setmostrarIndex(!mostrarIndex);
     setmostrarAdd(!mostrarAdd);
-    reset(campos);
+    reset(DefaultCiudades);
   };
-    //Constante para mostrar el collapse de editar un registro
-    const MostrarCollapseEditar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarEditar(!mostrarEditar);
-      reset(campos);
-    };
-  
-    //Constante para mostrar el collapse de detalles un registro
-    const MostrarCollapseDetalles = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarDetalles(!mostrarDetalles);
-    };
+  //Constante para mostrar el collapse de editar un registro
+  const MostrarCollapseEditar = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarEditar(!mostrarEditar);
+    reset(DefaultCiudades);
+  };
+
+  //Constante para mostrar el collapse de detalles un registro
+  const MostrarCollapseDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+  };
 
   const handleDelete = (id) => {
     DialogEliminar(id)
@@ -349,46 +198,45 @@ function CiudadesIndex() {
 
   const handleChange = (event) => {
     setFilas(event.target.value);
-    setMessage(event.target.value);
   };
 
 
   {/* Columnas de la tabla */ }
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      sorter: (a, b) => a.id - b.id
+      title: '#',
+      dataIndex: 'key',
+      key: 'key',
+      sorter: (a, b) => a.key - b.key
     },
     {
       title: 'Cuidad',
-      dataIndex: 'nombreCuidad',
-      key: 'nombreCuidad',
-      sorter: (a, b) => a.nombreCuidad.localeCompare(b.nombreCuidad),
+      dataIndex: 'ciud_Nombre',
+      key: 'ciud_Nombre',
+      sorter: (a, b) => a.ciud_Nombre.localeCompare(b.ciud_Nombre),
     },
     {
       title: 'Provincia',
-      dataIndex: 'provincia',
-      key: 'provincia',
-      sorter: (a, b) => a.provincia.localeCompare(b.provincia),
+      dataIndex: 'pvin_Nombre',
+      key: 'pvin_Nombre',
+      sorter: (a, b) => a.pvin_Nombre.localeCompare(b.pvin_Nombre),
     },
     {
       title: 'Pais',
-      dataIndex: 'pais',
-      key: 'pais',
-      sorter: (a, b) => a.pais.localeCompare(b.pais),
+      dataIndex: 'pais_Nombre',
+      key: 'pais_Nombre',
+      sorter: (a, b) => a.pais_Nombre.localeCompare(b.pais_Nombre),
     },
     {
       title: 'Acciones',
       key: 'operation',
       render: (params) => (
-        <div key={params.id}>
+        <div key={params.ciud_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.ciud_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              onClick={(e) => handleClick(e, params.ciud_Id)}
               variant="contained"
               style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
               startIcon={<Icon>menu</Icon>}
@@ -396,16 +244,16 @@ function CiudadesIndex() {
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.ciud_Id}`}
+              anchorEl={anchorEl[params.ciud_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.ciud_Id])}
+              onClose={() => handleClose(params.ciud_Id)}
             >
-              <MenuItem onClick={() => handleEdit(params.id)}>
+              <MenuItem onClick={() => handleEdit(params)}>
                 <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id)}>
+              <MenuItem onClick={() => handleDetails(params)}>
                 <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
             </Menu>
@@ -415,62 +263,60 @@ function CiudadesIndex() {
     },
   ];
 
-     //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-     const CerrarEditar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarEditar(!mostrarEditar);
-      reset(campos);
-    };
-  
-    //Constante para cerrar el collapse de detalles
-    const CerrarDetalles = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarDetalles(!mostrarDetalles);
-    };
-
-    
-    //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-    const iconStyle = {
-      marginRight: "5px",
-      verticalAlign: "middle",
-      color: "#634a9e",
-    };
-
-     //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
+  //Peticion para cargar datos de la tabla
+  const ciudadesGetData = async () => {
+    try {
+      setDataTabla(await CiudadesServices.listar());
+    } catch (error) {
+      ToastError('Error inesperado')
+    }
   };
 
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
+  //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los DefaultCiudades])
+  const CerrarEditar = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarEditar(!mostrarEditar);
+    reset(DefaultCiudades);
   };
 
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
+  //Constante para cerrar el collapse de detalles
+  const CerrarDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
   };
+
 
 
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
-  {/* Filtrado de datos */ }
-  const filteredRows = DataTabla.filter((row) =>
-    Object.values(row).some((value) =>
-      typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
+  //Constantes de los campos que se utilizaran para filtrar datos (Ingresar los campos que pusieron en la tabla(Columns))
+  const camposToFilter = ["key", "ciud_Nombre", "pvin_Nombre", "pais_Nombre"];
+
+  //Constante que ayuda a filtrar el datatable
+  const filteredRows = DataTabla.filter((row) => {
+    if (searchText === "") {
+      return true; // Mostrar todas las filas si el buscador está vacío
+    }
+
+    for (const [key, value] of Object.entries(row)) {
+      if (camposToFilter.includes(key)) {
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
+        if (formattedValue.includes(formattedSearchText)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
 
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
@@ -478,217 +324,63 @@ function CiudadesIndex() {
 
   {/* Función para mostrar la tabla y mostrar agregar */ }
   const VisibilidadTabla = () => {
-    reset(campos);
+    reset(DefaultCiudades);
     setmostrarIndex(!mostrarIndex);
     setmostrarAdd(!mostrarAdd);
-    //setmostrarEditar(!mostrarEditar);
-    
-    
-  };
-  
 
-  const AgregarCiudad = () => {
-    const formData = watch();
-    ValidacionAgregar(formData); 
-    handleSubmit(ValidacionAgregar)(); 
   };
 
-  const CiudadesValidar = (nombreCuidad) => {
-    if (!nombreCuidad) {
-      return true;
-    }
-    else {
-      return false;
-    }
-  };
-
-  const ValidacionAgregar = (data) => {
-    console.log(data);
-    // Acá se llaman todos los campos a validar
-    const ErroresArray = [
-      CiudadesValidar(data.nombreCuidad)
-    ]
-
-    // Se define la variable donde guardaremos los errores
-    let errors = 0;
-
-    // Se recorre el arreglo y se buscan los errores
-    for (let i = 0; i < ErroresArray.length; i++) {
-      if (ErroresArray[i] === true) {
-        errors++;
-      }
-    }
-
-    // Se utiliza la varibale de errores y se evalua en base a ella.
-    if (errors == 0) {
+  //Peticion para crear un registro
+  const ciudadesCreate = async () => {
     try {
-      let values = {
-        ciud_Nombre: data.nombreCuidad,
-        pvin_Id: data.provincia,
-        usua_UsuarioCreacion: 1,
-        ciud_FechaCreacion: new Date() 
-      }
-      const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      axios.post(process.env.REACT_APP_API_URL+'api/Ciudades/Insertar',values,{
-        headers: customHeaders,
-      })
-      .then(response =>{
-        console.log(response, "respuesta")
-        if(response.data.data != null){
-          if (response.data.data.messageStatus === "1") {  
-            console.log("siuuuuu");       
-            ToastExito();
-            CargarDatosTabla();
-            VisibilidadTabla();     
-        }else {
-          if(response.data.data.messageStatus.includes("Violation of UNIQUE KEY constraint 'UQ_Gral_tbCargos__carg_Nombre'.")){
-            ToastInfoWarning();
-          }else{
-            ToastError();
-          } 
-        }  
-        }else{
-          ToastErrorApi();
-        }
-      }).catch = (error) => {
-        ToastError();
+      const response = await CiudadesServices.crear(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        ciudadesGetData();
+        VisibilidadTabla();
+        reset(DefaultCiudades);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
       }
     } catch (error) {
-      ToastError();
-    }
-      
-
-    }
-    else {
-      console.log(errors);
-      ToastError();
+      console.log(error.message);
+      ToastError("Error inesperado");
     }
   };
 
-  const EditarCiudad = () => {
-    const formData = watch();
-    ValidacionEditar(formData); 
-    handleSubmit(ValidacionEditar)(); 
-  };
-
-  const CiudadesEditar = (nombreCuidadEditar) => {
-    if (!nombreCuidadEditar) {
-      return true;
-    }
-    else {
-      return false;
-    }
-  };
-
-  const ValidacionEditar = (data) => {
-    console.log(data);
-    // Acá se llaman todos los campos a validar
-    const ErroresArray = [
-      CiudadesEditar(data.nombreCuidadEditar)
-    ]
-
-    // Se define la variable donde guardaremos los errores
-    let errors = 0;
-
-    // Se recorre el arreglo y se buscan los errores
-    for (let i = 0; i < ErroresArray.length; i++) {
-      if (ErroresArray[i] === true) {
-        errors++;
+  // Peticion para editar un registro
+  const ciudadesEdit = async () => {
+    try {
+      const response = await CiudadesServices.editar(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha editado exitosamente");
+        ciudadesGetData();
+        CerrarEditar();
+        reset(DefaultCiudades);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
       }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
     }
-
-
-    if (data.nombreCuidadEditar != null || data.paisEditar != null || data.provinciaEditar != null) {
-      if (data.nombreCuidadEditar.trim() === "") {
-        let values = {
-          ciud_Id:					data.id,
-          ciud_Nombre:			data.nombreCuidadEditar, 
-          pvin_Id:					provcodigo, 
-          usua_UsuarioModificacion:	1,
-          ciud_FechaModificacion: new Date()	
-        }
-        const customHeaders = {
-          'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-        };
-        axios.post(process.env.REACT_APP_API_URL+'api/Ciudades/Editar',values,{
-          headers: customHeaders,
-        })
-        .then(response =>{
-          console.log(response, "respuesta")
-          if(response.data.data != null){
-            if (response.data.data.messageStatus === "1") {  
-              console.log("siuuuuu");       
-              ToastEditar();
-              CargarDatosTabla();
-              VisibilidadTabla();     
-          }else {
-            if(response.data.data.messageStatus.includes("Violation of UNIQUE KEY constraint 'UQ_Gral_tbCargos__carg_Nombre'.")){
-              ToastInfoWarning();
-            }else{
-              ToastError();
-            } 
-          }  
-          }else{
-            ToastErrorApi();
-          }
-        }).catch = (error) => {
-  
-        }
-      }
-      else{
-        ToastError();
-      }
-    }
-    else{
-      ToastError();
-    }
-
-    // Se utiliza la varibale de errores y se evalua en base a ella.
-    // if (errors == 0) {
-      
-    //   let values = {
-    //     ciud_Id:					data.id,
-    //     ciud_Nombre:			data.nombreCuidadEditar, 
-    //     pvin_Id:					provcodigo, 
-    //     usua_UsuarioModificacion:	1,
-    //     ciud_FechaModificacion: new Date()	
-    //   }
-    //   const customHeaders = {
-    //     'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    //   };
-    //   axios.post(process.env.REACT_APP_API_URL+'api/Ciudades/Editar',values,{
-    //     headers: customHeaders,
-    //   })
-    //   .then(response =>{
-    //     console.log(response, "respuesta")
-    //     if(response.data.data != null){
-    //       if (response.data.data.messageStatus === "1") {  
-    //         console.log("siuuuuu");       
-    //         ToastExito();
-    //         CargarDatosTabla();
-    //         VisibilidadTabla();     
-    //     }else {
-    //       if(response.data.data.messageStatus.includes("Violation of UNIQUE KEY constraint 'UQ_Gral_tbCargos__carg_Nombre'.")){
-    //         ToastInfoWarning();
-    //       }else{
-    //         ToastError();
-    //       } 
-    //     }  
-    //     }else{
-    //       ToastErrorApi();
-    //     }
-    //   }).catch = (error) => {
-
-    //   }
-
-    // }
-    // else {
-    //   console.log(errors);
-    //   ToastError();
-    // }
   };
+
+
+  const GuardarCiudad = () => {
+    if (isValid) {
+      // Validacion de campos completos
+      if (!editar) {
+        // Validacion de la funcion a realizar
+        ciudadesCreate();
+      } else {
+        ciudadesEdit();
+      }
+    } else {
+      ToastWarning("Completa todos los campos");
+    }
+  };
+
 
   return (
     <Card sx={{ minWidth: 275, margin: '40px' }}>
@@ -712,12 +404,15 @@ function CiudadesIndex() {
                 backgroundColor: '#634A9E', color: 'white',
                 "&:hover": { backgroundColor: '#6e52ae' },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={() => {
+                MostrarCollapseAgregar();
+                setEditar(false);
+              }}
             >
               Nuevo
             </Button>
           </Stack>
-        <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1}>
             <label className='mt-8'>Filas por página:</label>
             <FormControl sx={{ minWidth: 50 }} size="small">
               {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
@@ -765,20 +460,18 @@ function CiudadesIndex() {
 
           <Table
             columns={columns}
-            
+
             dataSource={filteredRows}
             size="small"
             pagination={{
               pageSize: filas
-              ,     className: "custom-pagination",
+              , className: "custom-pagination",
             }}
 
           />
         </div>
       </Collapse>
-    {/* Tabla */}
-
-
+      {/* Tabla */}
 
 
       {/* Formulario Agregar */}
@@ -786,122 +479,132 @@ function CiudadesIndex() {
     <Collapse in={mostrarAdd}>
         <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Grid container spacing={3}>
-            <Grid item xs={12}> </Grid>
+            <Grid item xs={12}>
+            <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar ciudad" : "Agregar ciudad"}
+                  />
+                </Divider>
+            </Grid>
 
-            <Grid item xs={6} >
-              <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">País</InputLabel>
+              <Grid item xs={6} >
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.pais}>País</FormLabel>
                   <Controller
                     render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.pais}
-                          style={{ borderRadius: '3px' }}
-                          label="País"
-                          defaultValue={" "}
-                          onChange={e => {
-                            const paisSeleccionado = e.target.value; 
-                            field.onChange(e);
-                            CargarProvinciaDDL(paisSeleccionado); 
-                          }}
-                        >
-                        {PaisDDL.map(pais => (
-                          <MenuItem key={pais.pais_Id} value={pais.pais_Id}>
-                            {pais.pais}
-                          </MenuItem>
-                        ))} 
-                        </Select>
+                      <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="pais"
+                      options={PaisDDL}
+                      value={datosWatch["pais"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('pais', value)
+                          setValue('provincia', null)
+                          ddlProvincia(value?.value)
+                          if (!value) { setValue('pvin_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.pais}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
+                    />
                     )}
                     name="pais"
                     control={control}
                   />
-              </FormControl>
-            </Grid>
+                </FormControl>
+              </Grid>
 
-            <Grid item xs={6} >
-              <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Provincia</InputLabel>
+              <Grid item xs={6} >
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.provincia}>Provincia</FormLabel>
                   <Controller
                     render={({ field }) => (
-                        <Select
+                      <Autocomplete
                         {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.provincia}
-                          style={{ borderRadius: '3px' }}
-                          label="Provincia"
-                          defaultValue={" "}
-                        >
-                        {ProvinciaDDL.map(provincia => (
-                          <MenuItem key={provincia.pvin_Id} value={provincia.pvin_Id}>
-                            {provincia.provincia}
-                          </MenuItem>
-                        ))} 
-                        </Select>
+                        id="provincia"
+                        isOptionEqualToValue={(option, value) =>
+                          option.value === value?.value
+                        }
+                        options={ProvinciaDDL}
+                        disabled={datosWatch['pais'] != null ? false : true}
+                        value={datosWatch.provincia ?? null}
+                        onChange={(event, value) => {
+                          setValue("provincia", value);
+                        }}
+                        renderInput={(params) => (
+                          <TextField {...params} error={!!errors.provincia} InputLabelProps={{ shrink: true }}/>
+                        )}
+                      />
                     )}
                     name="provincia"
                     control={control}
                   />
-              </FormControl>
+                </FormControl>
+              </Grid>
+
+
+              <Grid item xs={12}>
+              <FormLabel error={!!errors.nombreCuidad}>Nombre de Ciudad</FormLabel>
+                <Controller render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    error={!!errors.nombreCuidad}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                )}
+                  name='nombreCuidad'
+                  control={control} />
+              </Grid>
+
+
+              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
+                <Button
+                  startIcon={<Icon>checked</Icon>}
+                  variant="contained"
+                  color="primary"
+                  onClick={GuardarCiudad}
+                  style={{ borderRadius: '10px', marginRight: '10px' }}
+                  sx={{
+                    backgroundColor: '#634A9E', color: 'white',
+                    "&:hover": { backgroundColor: '#6e52ae' },
+                  }}
+                  type='submit'
+                >
+                  Guardar
+                </Button>
+
+                <Button
+                  startIcon={<Icon>close</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: '10px' }}
+                  sx={{
+                    backgroundColor: '#DAD8D8', color: 'black',
+                    "&:hover": { backgroundColor: '#BFBABA' },
+                  }}
+                  onClick={VisibilidadTabla}
+                >
+                  Cancelar
+                </Button>
+              </Grid>
+
             </Grid>
+          </CardContent>
+        </Collapse>
+      </form>
+      {/* Formulario Agregar */}
 
-
-            <Grid item xs={12}>
-              <Controller render={({field}) =>(
-                <TextField
-                {...field}
-                fullWidth
-                  label="Nombre de Cuidad"
-                  error={!!errors.nombreCuidad}
-                  InputLabelProps={{ shrink: true }}
-                />
-              )}
-              name='nombreCuidad'
-              control={control}/>
-            </Grid>
-
-
-            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                onClick={AgregarCiudad}
-                style={{ borderRadius: '10px', marginRight: '10px' }}
-                sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
-                }}
-                type='submit'
-              >
-                Guardar
-              </Button>
-
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={VisibilidadTabla}
-              >
-                Cancelar
-              </Button>
-            </Grid>
-
-          </Grid>
-        </CardContent>
-      </Collapse>
-  </form>
-   {/* Formulario Agregar */}
-
-   {/* Collapse para el formulario de editar un registro inicio*/}
-   <Collapse in={mostrarEditar}>
+      {/* Collapse para el formulario de editar un registro inicio*/}
+      <Collapse in={mostrarEditar}>
         <CardContent
           sx={{
             display: "flex",
@@ -910,80 +613,90 @@ function CiudadesIndex() {
           }}
         >
           <Grid container spacing={3}>
-          <Grid item xs={12}> </Grid>
+            <Grid item xs={12}>
+            <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar ciudad" : "Agregar ciudad"}
+                  />
+                </Divider>
+            </Grid>
 
             <Grid item xs={6} >
               <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">País</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.paisEditar}
-                          style={{ borderRadius: '3px' }}
-                          label="País"
-                          value={paiscodigo}
-                          onChange={(event) => {
-                            setpaiscodigo(event.target.value)
-                            CargarProvinciaDDLEditar(event.target.value)
-                          }}
-                        >
-                        {PaisDDL.map(pais => (
-                          <MenuItem key={pais.pais_Id} value={pais.pais_Id}>
-                            {pais.pais}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="paisEditar"
-                    control={control}
+                <FormLabel error={!!errors.pais}>País</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="pais"
+                      options={PaisDDL}
+                      value={datosWatch["pais"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('pais', value)
+                          setValue('provincia', null)
+                          ddlProvincia(value?.value)
+                          if (!value) { setValue('pvin_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.pais}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
                   />
+                  )}
+                  name="pais"
+                  control={control}
+                />
               </FormControl>
             </Grid>
 
             <Grid item xs={6} >
               <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Provincia</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.provincia}
-                          style={{ borderRadius: '3px' }}
-                          label="Provincia"
-                          value={provcodigo}
-                          onChange={(event) => setprovcodigo(event.target.value)}
-                        >
-                        {ProvinciaDDL.map(provincia => (
-                          <MenuItem key={provincia.pvin_Id} value={provincia.pvin_Id}>
-                            {provincia.provincia}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="provinciaEditar"
-                    control={control}
-                  />
+                <FormLabel error={!!errors.provincia}>Provincia</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      id="provincia"
+                      isOptionEqualToValue={(option, value) =>
+                        option.value === value?.value
+                      }
+                      options={ProvinciaDDL}
+                      disabled={datosWatch['pais'] != null ? false : true}
+                      value={datosWatch.provincia ?? null}
+                      onChange={(event, value) => {
+                        setValue("provincia", value);
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} error={!!errors.provincia} />
+                      )}
+                    />
+                  )}
+                  name="provincia"
+                  control={control}
+                />
               </FormControl>
             </Grid>
 
 
             <Grid item xs={12}>
-              <Controller render={({field}) =>(
+            <FormLabel error={!!errors.nombreCuidad}>Nombre de Ciudad</FormLabel>
+              <Controller render={({ field }) => (
                 <TextField
-                {...register("ciudadEditar")}
-                fullWidth
-                  label="Nombre de Cuidad"
-                  error={!!errors.nombreCuidadEditar}
+                  {...field}
+                  fullWidth
+                  error={!!errors.nombreCuidad}
                   InputLabelProps={{ shrink: true }}
                 />
               )}
-              name='nombreCuidadEditar'
-              control={control}/>
+                name='nombreCuidad'
+                control={control} />
             </Grid>
 
 
@@ -1006,7 +719,7 @@ function CiudadesIndex() {
                   color: "white",
                   "&:hover": { backgroundColor: "#6e52ae" },
                 }}
-                onClick={CerrarEditar}
+                onClick={GuardarCiudad}
               >
                 Editar
               </Button>
@@ -1031,115 +744,158 @@ function CiudadesIndex() {
       </Collapse>
       {/* Collapse para el formulario de editar un registro fin*/}
 
-      {/* Collapse para mostrar los detalles de un registro inicio*/}
+
+      {/* Inicia del collapse Detalles */}
       <Collapse in={mostrarDetalles}>
         <CardContent
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "flex-center",
           }}
-        >   
-         <Grid container spacing={3}> 
-         <Grid item xs={12}>
-              <h2>Detalles de la Ciudad</h2>   
-              </Grid>   
-              <Grid item xs={12}>   
-                <Box sx={{ display: "flex", flexDirection: "row" }}>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="id">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Ciudad Id:
-                      </Typography>
-                      <Typography>{id}</Typography>
-                    </InputLabel>
-                   </Box>
-                   <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Ciudad descripción:
-                      </Typography>
-                      <Typography>{nombreCuidad}</Typography>
-                    </InputLabel>
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Provincia:
-                      </Typography>
-                      <Typography>{pais}</Typography>
-                    </InputLabel>
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        País:
-                      </Typography>
-                      <Typography>{provincia}</Typography>
-                    </InputLabel>
-                  </Box>
-                </Box>
-                </Grid> 
-                <br></br>   
-                <Grid item xs={12}>            
-                      <table
-                        id="detallesTabla"
-                        style={{ width: "100%", borderCollapse: "collapse" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>edit</Icon>Accion
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>person</Icon>Usuario
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>date_range</Icon>Fecha y
-                              hora
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Creación</strong>
-                            </td>
-                            <td style={tableCellStyle}>{usuariocrea}</td>
-                            <td style={tableCellStyle}>{fechacrea}</td>
-                          </tr>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Modificación</strong>
-                            </td>
-                            <td style={tableCellStyle}>{usuariomodifica}</td>
-                            <td style={tableCellStyle}>{fechamodifica}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      </Grid> 
-              <br></br>
-              <Grid item xs={12}>    
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: "0px", marginBottom: "10px" }}>
+                <Chip label="Detalles de la ciudad" />
+              </Divider>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id de la ciudad:
+                  </Typography>
+                  <Typography>{DatosDetalles["ciud_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre de la ciudad:
+                  </Typography>
+                  <Typography>{DatosDetalles["ciud_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Provincia de la ciudad:
+                  </Typography>
+                  <Typography>{DatosDetalles["pvin_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    País de la ciudad:
+                  </Typography>
+                  <Typography>{DatosDetalles["pais_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>
+                      Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>
+                      Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>
+                        date_range
+                      </Icon>
+                      Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioCreacionNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["ciud_FechaCreacion"]
+                        ? new Date(
+                          DatosDetalles["ciud_FechaCreacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioModificadorNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["ciud_FechaModificacion"]
+                        ? new Date(
+                          DatosDetalles["ciud_FechaModificacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarDetalles}
+                  onClick={() => {
+                    CerrarDetalles();
+                  }}
                   startIcon={<Icon>arrow_back</Icon>}
                 >
                   Regresar
                 </Button>
               </div>
-              </Grid>
-              </Grid>  
+            </Grid>
+          </Grid>
         </CardContent>
       </Collapse>
-      {/* Collapse para mostrar los detalles de un registro fin*/}
+      {/* Fin del Collapse Detalles */}
 
 
-     {/* Modal de eliminar */}
+      {/* Modal de eliminar */}
       <Dialog
         open={Eliminar}
-        fullWidth="md"
+        fullWidth
         onClose={DialogEliminar}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
@@ -1181,11 +937,10 @@ function CiudadesIndex() {
             >
               Cancelar
             </Button>
-          </Grid> 
+          </Grid>
         </DialogActions>
       </Dialog>
       {/* Modal de eliminar */}
-      <ToastContainer />
     </Card>
   );
 }

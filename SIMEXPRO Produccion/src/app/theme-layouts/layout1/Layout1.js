@@ -13,6 +13,8 @@ import NavbarWrapperLayout1 from './components/NavbarWrapperLayout1';
 import RightSideLayout1 from './components/RightSideLayout1';
 import ToolbarLayout1 from './components/ToolbarLayout1';
 import SettingsPanel from '../shared-components/SettingsPanel';
+import LeftSideLayout2 from '../layout2/components/LeftSideLayout2';
+import LeftSideLayout3 from '../layout3/components/LeftSideLayout3';
 
 const Root = styled('div')(({ theme, config }) => ({
   ...(config.mode === 'boxed' && {
@@ -47,9 +49,9 @@ function Layout1(props) {
             <ToolbarLayout1 className={config.toolbar.style === 'fixed' && 'sticky top-0'} />
           )}
 
-          <div className="sticky top-0 z-99">
-            <SettingsPanel />
-          </div>
+          {/* <div className="sticky top-0 z-99">
+            <SettingsPanel /> Configuracion de la plantilla (No necesaria)
+          </div> */}
 
           <div className="flex flex-col flex-auto min-h-0 relative z-10">
             <FuseDialog />
@@ -59,13 +61,14 @@ function Layout1(props) {
             {props.children}
           </div>
 
-        
+          {config.footer.display && (
+            <FooterLayout1 className={config.footer.style === 'fixed' && 'sticky bottom-0'} />
+          )}
         </main>
 
         {config.navbar.display && config.navbar.position === 'right' && <NavbarWrapperLayout1 />}
       </div>
-
-      {config.rightSidePanel.display && <RightSideLayout1 />}
+      {/* {config.rightSidePanel.display && <RightSideLayout1 />} */}
       <FuseMessage />
     </Root>
   );

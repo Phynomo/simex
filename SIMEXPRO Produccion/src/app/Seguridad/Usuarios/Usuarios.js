@@ -33,198 +33,159 @@ import {
   FormLabel,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+//Imports de validaciones
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import { useForm, Controller } from "react-hook-form";
-import { Badge, Dropdown, Space, Table } from "antd";
+import { Badge, Dropdown, Space, Table, Tag,Image  } from "antd";
 import axios from 'axios';
+
+//Imports tabla
+import LoadingIcon from "src/styles/iconoCargaTabla";
 import "src/styles/custom-pagination.css";
 import { useHistory } from "react-router-dom";
 import { ConsoleSqlOutlined } from "@ant-design/icons";
 
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+
+//Import ddls
+import load_DDLs from "src/app/loadDDLs/Load_DDL";
+
+//import Toast
+import "react-toastify/dist/ReactToastify.css";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+import usuarioservice from "./UsuariosService";
+
+  {/*Constantes para validaciones Agregar inicio */ }
+  const camposUsuarios = {
+    NombreUsuario: "",
+    ContraUsuario: "",
+    Empleado: null,
+    UsuarioRol: null,
+  };
+
+  const schemaUsuarios = yup.object().shape({
+    NombreUsuario: yup.string().trim().max(150).required(),
+    ContraUsuario: yup.string().max(150).required(),
+    Empleado: yup.object().required(""),
+    UsuarioRol: '',
+  });
+  {/*Constantes para validaciones Agregar fin */ }
+
+  {/*Constantes para validaciones Editar inicio */ }
+  const camposUsuariosEditar = {
+    NombreUsuarioEditar: "",
+    EmpleadoEditar: null,
+    UsuarioRolEditar: null,
+  };
+
+  const schemaUsuariosEditar = yup.object().shape({
+    NombreUsuarioEditar: yup.string().trim().max(150).required(),
+    EmpleadoEditar:yup.object().required(""),
+    UsuarioRolEditar: ''
+  });
+   {/*Constantes para validaciones Editar fin */ }
+
 function UsuariosIndex() {
 
-  //Token de la API para subir imagenes
-  const apikey = "7e4e4920016a49b1dfc06d5af4e9ffc3";
 
   const fileInputRef = useRef(null);
-
+ 
   //Constante para la busqueda del datatable
   const [searchText, setSearchText] = useState("");
 
   //Constante para mostrar el index de la pantalla
   const [mostrarIndex, setmostrarIndex] = useState(true);
 
+  //Constante para las filas que tendrá cada paginación del datatable
+  const [filas, setFilas] = React.useState(10);
+  
   //Constantes para los Collapse de agregar, editar y detalles 
   const [mostrarAgregar, setmostrarAgregar] = useState(false);
   const [mostrarEditar, setmostrarEditar] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
   const [Eliminar, setEliminar] = useState(false);
-
-
-  //Constante para las filas que tendrá cada paginación del datatable
-  const [filas, setFilas] = React.useState(10);
-
-  //Constante de los valores de los textfield de la pantalla
-  const [id, setid] = useState("");
-  const [usuario, setusuario] = useState("");
-  const [empleados, setempleados] = useState("");
-  const [rol, setrol] = useState('');
-  const [administrador, setadministrador] = useState('');
-  const [idEliminar, setidEliminar] = useState(0);
-  const [image, setimage] = useState('https://i.ibb.co/tLVHzJs/imagen-usuario.png');
+  const [Activar, setActivar] = useState(false);
+  const [editar, setEditar] = useState(false);
+  const [Id, setId] = useState(0);
+  const [DetallesTabla, setDetallesTabla] = useState([])
   const [checked, setChecked] = React.useState(false);
-  const [checkedEditar, setCheckedEditar] = React.useState(false);
-  const [empleadoSeleccionado, setempleadoSeleccionado] = useState('')
-  const [rolSeleccionado, setrolSeleccionado] = useState('')
+  const [image, setimage] = useState('https://i.ibb.co/tLVHzJs/imagen-usuario.png');
+
   //Constante para el boton de opciones
   const [anchorEl, setAnchorEl] = useState({});
 
-  //Constante para asignar los valores a la tabla y mapear
-  const [DataTabla, setDataTabla] = useState([])
-  const [DataDetalles, setDataDetalles] = useState([])
-  const [empleadoEdit, setempleadoEdit] = useState([])
-  const [message, setMessage] = useState();
+  const camposToFilter = ["key", "usua_Nombre", "empleadoNombreCompleto", "role_Descripcion"];
 
-
-  const camposToFilter = ["id", "usuario", "empleado", "rol"];
+  /* Datos de la tabla */
+  const [data, setData] = useState([]);
 
   //constante que me carga la imagen por defecto del usuario en caso que no seleccione una
-  const [userImage, setUserImage] = useState(
-    "https://i.ibb.co/8MKqj1C/Avatar-Usuario.png"
-  );
+  const [userImage, setUserImage] = useState("https://i.ibb.co/8MKqj1C/Avatar-Usuario.png");
 
-  //Listados para los select
-  const [empleadosList, setEmpleadosList] = useState([]);
-  const [rolesList, setRolesList] = useState([]);
+  //Variables DDL
+  const [Empleados_DDL, setEmpleados_DDL] = useState([]);
+  const [Roles_DDL, setRoles_DDL] = useState([]);
 
-  //Hook UseEffect para que cargue los datos de un solo cuando inicice la pantalla
-  useEffect(() => {
-    CargarDatosTabla();
-    CargasDatosEmpleadosDdl();
-    CargasRolesDdl();
-  }, []);
+  //Variables oara setear la cantidad de registro que se mostraran en la tabla
+  const handleChange = (event) => {
+    setFilas(event.target.value);
+  };
 
-  //
+  //Cargado de las variables DDL
+  async function ddls() {
+    setEmpleados_DDL(await load_DDLs.EmpleadosNoTieneUsuario());
+    setRoles_DDL(await load_DDLs.Roles());
+  }
+
+  //Peticion para cargar datos de la tabla
+  const UsuariosGetData = async () => {
+    try {
+      setData(await usuarioservice.listar());
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTabla = async() => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAgregar(!mostrarAgregar);
+    setTimeout(() => {
+      reset(camposUsuarios);
+    setChecked(false);
+    setimage('https://i.ibb.co/tLVHzJs/imagen-usuario.png');
+    }, "1000");
+    setEmpleados_DDL(await load_DDLs.EmpleadosNoTieneUsuario());
+  };
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTablaEditar = async() => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarEditar(!mostrarEditar);
+    setTimeout(() => {
+      resetEditar(camposUsuariosEditar);
+      setChecked(false);
+      setimage('https://i.ibb.co/tLVHzJs/imagen-usuario.png');
+    }, "1000");
+    setEmpleados_DDL(await load_DDLs.EmpleadosNoTieneUsuario());
+  };
+
+  //Controlar el cambio de estado de si Administrador
   const handleChangeAdmin = (event) => {
     setChecked(event.target.checked);
   };
 
-  //Constante que filtra las imagenes por medio de un FileReader
-  //que basicamente proporciona una interfaz para leer de
-  //forma asíncrona el contenido de un
-  //archivo desde una aplicación web
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        setimage(reader.result);
-      };
-    } else {
-      ToastWarningImagen();
-    }
-  };
-
-  //Constante para cargar los datos de los Dddl
-  const CargasDatosEmpleadosDdl = async () => {
-    const customHeaders = {
-      XApiKey: "4b567cb1c6b24b51ab55248f8e66e5cc",
-    };
-    const responseDdl = await axios.get(
-      process.env.REACT_APP_API_URL + "api/Empleados/Listar",
-      {
-        headers: customHeaders,
-      }
-    );
-    console.log(responseDdl.data.data)
-    setEmpleadosList(
-      responseDdl.data.data.map((item) => ({
-        empl_Id: item.empl_Id,
-        empleado: item.empl_Nombres + ' ' + item.empl_Apellidos,
-      }))
-    );
-  };
-
-
-  //Constante para cargar los datos de los Dddl
-  const CargasRolesDdl = async () => {
-    const customHeaders = {
-      XApiKey: "4b567cb1c6b24b51ab55248f8e66e5cc",
-    };
-    const responseDdl = await axios.get(
-      process.env.REACT_APP_API_URL + "api/Roles/Listar",
-      {
-        headers: customHeaders,
-      }
-    );
-    setRolesList(
-      responseDdl.data.data.map((item) => ({
-        role_Id: item.role_Id,
-        rol: item.role_Descripcion,
-      }))
-    );
-  };
-
-  const DialogEliminar = () => {
-    setEliminar(!Eliminar);
-  };
-
-  const EliminarRegistro = async () => {
-    let payload = {
-      usua_Id: idEliminar,
-      usua_UsuarioEliminacion: 1,
-      usua_FechaEliminacion: new Date()
-    };
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    const response = await axios.post(process.env.REACT_APP_API_URL + 'api/Usuarios/Eliminar', payload, {
-      headers: customHeaders,
-    });
-    console.log(response)
-    if (response.data.data.codeStatus === 1) {
-      DialogEliminar();
-      CargarDatosTabla();
-      ToastSuccessEliminar();
-    } else {
-      ToastErrorApi();
-    }
-  }
-
-  const handleDetails = (id, usuario, empleado, rol) => {
-    DetallesTabla(id, usuario, empleado, rol);
-    MostrarCollapseDetalles();
-    handleClose(id);
-  };
-
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (id, usuario, empleado, rol) => {
-    setid(id);
-    setusuario(usuario);
-    setempleados(empleado);
-    setrol(rol);
-    console.log(id)
-    const detalles = DataDetalles.find(d => d.usua_Id === id)
-    if (detalles.usua_EsAdmin)
-      setadministrador("Es administrador")
-    else
-      setadministrador("No es administrador")
-    const tableRows = document.querySelectorAll('#detallesTabla tbody tr')
-    tableRows[0].cells[1].textContent = detalles.usua_Nombre;
-    tableRows[0].cells[2].textContent = detalles.usua_FechaCreacion;
-    tableRows[1].cells[1].textContent = detalles.usua_UsuarioModificacion;
-    tableRows[1].cells[2].textContent = detalles.usua_FechaModificacion;
-  };
-
-  //Constante para la accción de eliminar y que abre el dialog de eliminar en el index y cierra el boton de opciones
-  const handleDelete = (id) => {
-    DialogEliminar();
-    setidEliminar(id);
-    handleClose(id);
+   //Controlador de la barra buscadora de la tabla
+   const handleSearchChange = (event) => {
+    setSearchText(event.target.value);
   };
 
   //Constante para el cerrrar las opciones del boton de opciones  
@@ -243,75 +204,142 @@ function UsuariosIndex() {
     }));
   };
 
-  //constante para cargar la tabla
-  const CargarDatosTabla = async () => {
-    try {
-      const customHeaders = {
-        XApiKey: "4b567cb1c6b24b51ab55248f8e66e5cc",
-      };
-      const response = await axios.get(
-        process.env.REACT_APP_API_URL + "api/Usuarios/Listar",
-        {
-          headers: customHeaders,
-        }
-      );
-      const rows = response.data.map((item, index) => {
-        return {
-          key: index,
-          id: item.usua_Id,
-          usuario: item.usua_Nombre,
-          empleado: item.empleadoNombreCompleto,
-          rol: item.role_Descripcion,
-          estado: item.usua_Estado.toString() == 'false' ? 'Inactivo' : 'Activo'
-        };
-      });
-      setDataTabla(rows);
-      setDataDetalles(response.data);
-    } catch (error) { }
+  const DialogEliminar = () => {
+    setEliminar(!Eliminar);
   };
+
+  const DialogActivar = () => {
+    setActivar(!Activar);
+  };
+
+  //Constante para la accción de eliminar y que abre el dialog de eliminar en el index y cierra el boton de opciones
+  const handleDelete = (datos) => {
+    setValue('NombreUsuario', datos['usua_Id']);
+    DialogEliminar();
+    handleClose(datos.usua_Id);
+  };
+
+  const handleActive = (datos) => {
+    if(datos.usua_Estado){  
+      ToastError("Este usuario esta activo");
+      handleClose(datos.usua_Id);
+    }else{
+      setValue('NombreUsuario', datos['usua_Id']);
+      DialogActivar();
+      handleClose(datos.usua_Id);
+    }
+  };
+
+  const handleDetails = (datos) => {
+    setDetallesTabla(datos);
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+    setimage(datos.usua_Image);
+    handleClose(datos.usua_Id);
+  };
+
+  //Handle que inicia la funcion de editar
+  const handleEdit = async(datos) => {
+    setimage(datos.usua_Image)
+
+    setValueEditar('NombreUsuarioEditar',datos.usua_Nombre)
+
+    if(datos.usua_EsAdmin)
+    setChecked(true);
+    else
+    setChecked(false);
+
+    const nuevoEmpleado = {
+      value: datos.empl_Id,
+      label: datos.empleadoNombreCompleto
+    };
+    Empleados_DDL.push(nuevoEmpleado)
+
+    setValueEditar(
+      "EmpleadoEditar",
+       Empleados_DDL.find((empleados_DDL) => empleados_DDL.value === datos.empl_Id) //importante para cargar bien los ddl al editar
+    );
+    
+    setValueEditar(
+      "UsuarioRolEditar",
+       Roles_DDL.find((roles_DDL) => roles_DDL.value === datos.role_Id) //importante para cargar bien los ddl al editar
+    );
+    setId(datos.usua_Id)
+    setTimeout(() => {
+      setmostrarIndex(!mostrarIndex);
+      setmostrarEditar(!mostrarEditar);
+    }, "250");
+    
+    handleClose(datos.usua_Id);
+  };
+
+
+  //Constante que filtra las imagenes por medio de un FileReader
+  //que basicamente proporciona una interfaz para leer de
+  //forma asíncrona el contenido de un
+  //archivo desde una aplicación web
+  const handleImageChange = (e) => {  
+    const file = e.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        setimage(reader.result);
+      };
+    } else {
+      ToastWarning("Archivo incorrecto");
+    }
+  };
+
+  //useEffect para cargar datos al ingresar a la pantalla
+  useEffect(() => {
+    ddls();
+    UsuariosGetData();
+  }, []);
 
   //Constante de las columnas del index
   const columns = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      sorter: (a, b) => a.id - b.id, //sorting para Numeros
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
     },
     {
       title: "Usuario",
-      dataIndex: "usuario",
-      key: "usuario",
-      sorter: (a, b) => a.usuario.localeCompare(b.usuario), //sorting para Letras
+      dataIndex: "usua_Nombre",
+      key: "usua_Nombre",
+      sorter: (a, b) => a.usua_Nombre.localeCompare(b.usua_Nombre), //sorting para Letras
     },
     {
       title: "Empleado",
-      dataIndex: "empleado",
-      key: "empleado",
-      sorter: (a, b) => a.emplado.localeCompare(b.empleado), //sorting para Letras
+      dataIndex: "empleadoNombreCompleto",
+      key: "empleadoNombreCompleto",
+      sorter: (a, b) => a.empleadoNombreCompleto.localeCompare(b.empleadoNombreCompleto), //sorting para Letras
     },
     {
       title: "Rol",
-      dataIndex: "rol",
-      key: "rol",
-      sorter: (a, b) => a.rol.localeCompare(b.rol), //sorting para Letras
+      dataIndex: "role_Descripcion",
+      key: "role_Descripcion",
+      sorter: (a, b) => a.role_Descripcion.localeCompare(b.role_Descripcion), //sorting para Letras
     },
     {
-      title: "Esta Activo?",
-      dataIndex: "estado",
-      key: "estado",
-      sorter: (a, b) => a.estado.localeCompare(b.estado), //sorting para Letras
+      title: "Estado",
+      dataIndex: "usua_Estado",
+      key: "usua_Estado",
+      render: (text, record) => {return(record.usua_Estado? <Tag color="green">Activo</Tag>: <Tag color="red">Inactivo</Tag>)},
+      // sorter: (a, b) => a.usua_Estado.localeCompare(b.usua_Estado), //sorting para Letras
     },
     {
       title: "Acciones",
       key: "operation",
       render: (params) => (
-        <div key={params.id}>
+        <div key={params.usua_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.usua_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              onClick={(e) => handleClick(e, params.usua_Id)}
               variant="contained"
               style={{
                 borderRadius: "10px",
@@ -323,20 +351,23 @@ function UsuariosIndex() {
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.usua_Id}`}
+              anchorEl={anchorEl[params.usua_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.usua_Id])}
+              onClose={() => handleClose(params.usua_Id)}
             >
               <MenuItem onClick={() => handleEdit(params)}>
-                <Icon>edit</Icon> Editar
+                <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id, params.usuario, params.empleado, params.rol)}>
-                <Icon>visibility</Icon> Detalles
+              <MenuItem onClick={() => handleDetails(params)}>
+                <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.id)}>
-                <Icon>delete</Icon> Eliminar
+              <MenuItem onClick={() => handleDelete(params)}>
+                <Icon>delete</Icon>ㅤEliminar
+              </MenuItem>
+              <MenuItem onClick={() => handleActive(params)}>
+                <Icon>toggle_off</Icon>ㅤActivar Usuario
               </MenuItem>
             </Menu>
           </Stack>
@@ -345,238 +376,22 @@ function UsuariosIndex() {
     },
   ];
 
-
-
-  //Constante que detecta el cambio de las filas que se mostraran en el index
-  const handleChange = (event) => {
-    setFilas(event.target.value);
-    setMessage(event.target.value);
-  };
-
-  const MostrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAgregar(!mostrarAgregar);
-    resetUsuarios(camposUsuarios);
-  };
-
-  const MostrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    resetUsuarios(camposUsuarios);
-  };
-
-  //Constante para mostrar el collapse de detalles un registro
-  const MostrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-    resetUsuarios(camposUsuarios);
-  };
-
-  const CerrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAgregar(!mostrarAgregar);
-    resetUsuarios(camposUsuarios);
-    CargarDatosTabla();
-  };
-
-  const CerrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    resetUsuarios(camposUsuarios);
-  };
-
-  //Constante para cerrar el collapse de detalles
-  const CerrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-
-  {/*Constantes para validaciones de agregar inicio */ }
-  const camposUsuarios = {
-    userNombreUsuario: "",
-    userContraseña: "",
-    empleado: '',
-    rol: '',
-    userEsAdmin: false,
-  };
-
-  const schemaUsuarios = yup.object().shape({
-    userNombreUsuario: yup.string().required(),
-    userContraseña: yup.string().required(),
-    empleado: yup.object().required(),
-    rol: yup.object().required(),
-    userEsAdmin: yup.bool(),
-  });
-
-  const {
-    handleSubmit: handleSubmitUsuarios,
-    reset: resetUsuarios,
-    control: controlUsuarios,
-    formState: formUsuarios,
-    watch: watchUsuarios,
-    setValue: setValueUsuarios,
-  } = useForm({
-    camposUsuarios,
-    mode: "all",
-    resolver: yupResolver(schemaUsuarios),
-  });
-
-  const {
-    isValid: isValidUsuarios,
-    dirtyFields: dirtyFieldsUsuarios,
-    errors: errorsUsuarios,
-  } = formUsuarios;
-
-  {/*Constantes para validaciones de agregar fin */ }
-
-  {/*Constantes para validaciones de editar inicio */ }
-  const camposUsuariosEditar = {
-    userNombreUsuarioEditar: "",
-    empleadoEditar: '',
-    rolEditar: '',
-    userEsAdminEditar: false,
-  };
-
-  const schemaUsuariosEditar = yup.object().shape({
-    userNombreUsuarioEditar: yup.string().required(),
-    empleadoEditar: yup.object().required(),
-    rolEditar: yup.object().required(),
-    userEsAdminEditar: yup.bool(),
-  });
-
-  const handleEdit = (params) => {
-    console.log(params)
-    MostrarCollapseEditar();
-    setValueUsuariosEditar('userNombreUsuarioEditar', params['usuario'])
-    console.log(empleadosList)
-    setValueUsuariosEditar('empleadoEditar', empleadosList.find(empleado => empleado.label === params['empleado']))
-    setValueUsuariosEditar('rolEditar', rolesList.find(roles => roles.label === params['rol']))
-    console.log(watchUsuariosEditar())
-
-    handleClose(params['id']);
-  };
-
-  const {
-    handleSubmit: handleSubmitUsuariosEditar,
-    reset: resetUsuariosEditar,
-    control: controlUsuariosEditar,
-    formState: formUsuariosEditar,
-    watch: watchUsuariosEditar,
-    setValue: setValueUsuariosEditar,
-  } = useForm({
-    camposUsuariosEditar,
-    mode: "all",
-    resolver: yupResolver(schemaUsuariosEditar),
-  });
-
-  const {
-    isValid: isValidUsuariosEditar,
-    dirtyFields: dirtyFieldsUsuariosEditar,
-    errors: errorsUsuariosEditar,
-  } = formUsuarios;
-
-  {/*Constantes para validaciones de editar fin */ }
-
-  const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
-  };
-
-  const ToastSuccess = () => {
-    toast.success("Datos ingresados correctamente.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  const ToastSuccessEditar = () => {
-    toast.success("Datos Editados correctamente.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  const ToastWarning = () => {
-    toast.warning("No se permiten campos vacios.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  const ToastInfoWarning = () => {
-    toast.warning("El dato que desea ingresar ya existe.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  const ToastWarningImagen = () => {
-    toast.warning("El archivo no es valido", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-
-  const ToastErrorApi = () => {
-    toast.warning("Error en el proceso de los.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  //Constante ToastSuccess y ToastWarning que nos sirven para las alertas en las validaciones del formulario
-  const ToastSuccessEliminar = () => {
-    toast.success('Datos eliminado correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
   //Constante que ayuda a filtrar el datatable
-  const filteredRows = DataTabla.filter((row) => {
+  const filteredRows = data.filter((row) => {
     if (searchText === "") {
-      return true;  // Mostrar todas las filas si el buscador está vacío
+      return true; // Mostrar todas las filas si el buscador está vacío
     }
 
     for (const [key, value] of Object.entries(row)) {
       if (camposToFilter.includes(key)) {
-        const formattedValue = typeof value === 'number' ? value.toString() : value.toString().toLowerCase();
-        const formattedSearchText = typeof searchText === 'number' ? searchText.toString() : searchText.toLowerCase();
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
         if (formattedValue.includes(formattedSearchText)) {
           return true;
         }
@@ -585,200 +400,142 @@ function UsuariosIndex() {
     return false;
   });
 
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
 
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
+  //Declaracion del formulario
+  const { handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
+      camposUsuarios, //Campos del formulario
+      mode: "all",
+      resolver: yupResolver(schemaUsuarios), //Esquema del formulario
+    });
 
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
+  //Validacion de campos vacios y errores
+  const { isValid, dirtyFields, errors  } = formState;
 
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
+  //Datos del formulario
+  const datosWatch = watch();
 
-  //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de agregar
-  const ValidacionAgregar = async (data) => {
-    let isValid = true;
-    console.log(data)
-    if (data.empleado != null || data.rol != null) {
-      if (data.userNombreUsuario != null || data.userContraseña != null) {
-        if (data.userNombreUsuario.trim() === "" || data.userContraseña.trim() === "" || data.empleado[0] === "" || data.rol === "") {
-          ToastWarning();
-          console.log("Masiso")
-          return isValid;
-        } else {
-          isValid = false;
-          let respuesta = await EjecutarEndPoint(data);
-          if (respuesta === 1) {
-            ToastSuccess();
-            CerrarCollapseAgregar();
-          } if (respuesta === 2) {
-            ToastInfoWarning();
-          } if (respuesta === 3) {
-            ToastErrorApi();
-          } if (respuesta === 4) {
-            ToastErrorApi();
-          }
-          return isValid;
-        }
+
+   //Declaracion del formulario de editar
+   const { handleSubmit:handleSubmitEditar,reset:resetEditar, control:controlEditar, watch:watchEditar, formState:formStateEditar, setValue:setValueEditar } = useForm({
+    camposUsuariosEditar, //Campos del formulario
+    mode: "all",
+    resolver: yupResolver(schemaUsuariosEditar), //Esquema del formulario
+  });
+
+  //Validacion de campos vacios y errores
+  const { isValid:isValidEditar, dirtyFields:dirtyFieldsEditar, errors:errorsEditar  } = formStateEditar;
+
+  //Datos del formulario
+  const datosWatchEditar = watchEditar();
+
+  //Controlador del formulario
+  const GuardarUsuarios = () => {
+    if((datosWatch.UsuarioRol === null) && !checked){
+      ToastWarning("Completa todos los campos");
+    }else{
+      if (isValid) {
+        // Validacion de campos completos
+          usuariosCreate();
       } else {
-        return isValid;
+        ToastWarning("Completa todos los campos");
       }
-    } else {
-      ToastWarning();
-      return isValid;
     }
-  }
+  };
 
-  //Ejecutar end point de tipo async para esperar la respuesta
-  const EjecutarEndPoint = async (data) => {
-    let payload = {
-      usua_Nombre: data.userNombreUsuario,
-      usua_Contrasenia: data.userContraseña,
-      empl_Id: data.empleado,
-      role_Id: data.rol,
-      usua_EsAdmin: checked,
-      usua_Image: image,
-      usua_UsuarioCreacion: 1,
-      usua_FechaCreacion: new Date(),
-    };
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    try {
-      const response = await axios.post(
-        process.env.REACT_APP_API_URL + 'api/Usuarios/Insertar',
-        payload,
-        {
-          headers: customHeaders,
-        }
-      );
-      console.log(response)
-      if (response.data.data != null) {
-        if (response.data.data.messageStatus === '1') {
-          return 1;
-        } else {
-          if (response.data.data.messageStatus.includes('UNIQUE')) {
-            return 2;
-          } else {
-            return 3;
-          }
-        }
+  //Controlador del formulario
+  const EditarUsuarios = () => {      
+    if((datosWatchEditar.UsuarioRolEditar === undefined || datosWatchEditar.UsuarioRolEditar === null ) && !checked){
+      ToastWarning("Completa todos los campos");
+    }else{
+      if(datosWatchEditar.NombreUsuarioEditar != '' && datosWatchEditar.EmpleadoEditar != null) {
+        // Validacion de campos completos
+          usuariosEdit();
       } else {
-        return 4;
+        ToastWarning("Completa todos los campos");
+      }
+   }
+  };
+
+  //Peticion para crear un registro
+  const usuariosCreate = async () => {
+    try {
+      const response = await usuarioservice.crear(datosWatch,image,checked);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        setTimeout(() => {
+          reset(camposUsuarios);
+        }, "500");
+        UsuariosGetData();
+        VisibilidadTabla();
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El nombre de usuario ya existe");
       }
     } catch (error) {
-      return 4;
+      ToastError("Error inesperado");
     }
   };
 
-  const EjecutarEndPointEditar = async (data) => {
-    let payload = {
-      usua_Id:id,
-      empl_Id: empleadoSeleccionado,
-      usua_Image: image,
-      role_Id: rolSeleccionado,
-      usua_EsAdmin: checkedEditar,
-      usua_UsuarioModificacion: 1,
-      tipa_FechaModificacion: new Date()  
-    }
-    console.log(payload)
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
+  // Peticion para editar un registro
+  const usuariosEdit = async () => {
     try {
-      const response =  await axios.post(process.env.REACT_APP_API_URL+'api/Areas/Editar',payload,{
-        headers: customHeaders,
-      })   
-      if (response.data.data != null) {
-        if (response.data.data.messageStatus === '1') {
-          return 1;
-        } else {
-          if (response.data.data.messageStatus.includes('UNIQUE')) {
-            return 2;
-          } else {
-            return 3;
-          }
-        }
-      } else {
-        return 4;
+      const response = await usuarioservice.editar(datosWatchEditar,Id,image,checked);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha editado exitosamente");
+        setTimeout(() => {
+          resetEditar(camposUsuariosEditar);
+        }, "500");
+        UsuariosGetData();
+        VisibilidadTablaEditar();
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
       }
     } catch (error) {
-      return 4;
+      ToastError("Error inesperado");
     }
   };
 
-  //Constante para ejecutar las validaciones y el envio del formulario en el boton de agregar en el collapse de agregar
-  const AgregarRegistro = async () => {
-    const validationResult = await ValidacionAgregar(watchUsuarios());
-    if (validationResult) {
-      handleSubmitUsuarios(ValidacionAgregar)();
-    }
-  };
-
-  //Constante para ejecutar las validaciones y el envio del formulario en el boton de agregar en el collapse de agregar
-  const EditarRegistro = async () => {
-    const validationResult = await ValidacionEditar(watchUsuariosEditar());
-    if (validationResult) {
-      handleSubmitUsuariosEditar(ValidacionEditar)();
-    }
-  };
-
-  const ValidacionEditar = async (data) => {
-    let isValid = true;
-    console.log(data)
-    if (data.empleadoEditar != null || data.rolEditar != null) {
-      if (data.userNombreUsuarioEditar != null) {
-        if (data.userNombreUsuarioEditar.trim() === "" || data.empleadoEditar[0] === "" || data.rolEditar[0] === "") {
-          ToastWarning();
-          return isValid = true;
-        } else {
-          isValid = false;
-          let respuesta = await EjecutarEndPointEditar(data);
-          if(respuesta === 1){
-            ToastSuccess();
-         CerrarCollapseEditar();                     
-          } if (respuesta === 2){
-            ToastInfoWarning();
-          } if(respuesta  === 3){
-            ToastErrorApi();
-          } if(respuesta === 4){
-            ToastErrorApi();
-          }
-          return isValid;
+  // Peticion para eliminar un registro
+  const ususariosDelete = async () => {
+    try {
+      const response = (await usuarioservice.eliminar(datosWatch))
+      if(response === 3){
+        DialogEliminar()
+        ToastError('El usuario que desea eliminar esta siendo utilizado en este momento')
+      }else{
+        if (response.data.data.codeStatus == 1) {
+          ToastSuccess('El registro se ha eliminado exitosamente')
+          UsuariosGetData();
+          DialogEliminar()
+          reset(camposUsuarios)
+        } else if (response.data.data.messageStatus.includes("0")) {
+          ToastError('El registro está en uso')
         }
-      } else {
-        return isValid;
       }
-    } else {
-      ToastWarning();
-      return isValid;
+    } catch (error) {
+      ToastError('Error inesperado')
     }
-  }
+  };
+
+  // Peticion para activar un registro
+  const ususariosActivar = async () => {
+    try { 
+      const response = (await usuarioservice.activar(datosWatch))
+      if (response.data.data.codeStatus == 1) {
+        ToastSuccess('El usuario ha sido activado exitosamente')
+        UsuariosGetData();
+        DialogActivar()
+        reset(camposUsuarios)
+      } else if (response.data.data.messageStatus.includes("0")) {
+        ToastError('El registro está en uso')
+      }
+    } catch (error) {
+      ToastError('Error inesperado')
+    }
+  };
+
 
   return (
     <Card sx={{ minWidth: 275, margin: "40px" }}>
-      <ToastContainer />
       <CardMedia
         component="img"
         height="200"
@@ -805,7 +562,10 @@ function UsuariosIndex() {
                 color: "white",
                 "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={()=>{
+                VisibilidadTabla()
+                setEditar(false)
+              }}
             >
               Nuevo
             </Button>
@@ -848,17 +608,22 @@ function UsuariosIndex() {
             />
           </Stack>
         </CardContent>
-      </Collapse>
 
       {/* Tabla */}
-      <Collapse in={mostrarIndex}>
-        <div className="center" style={{ width: "95%", margin: "auto" }}>
+      <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
             columns={columns}
             dataSource={filteredRows}
             size="small"
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
+            }}
             pagination={{
               pageSize: filas,
+              showSizeChanger: false,
               className: "custom-pagination",
             }}
           />
@@ -866,7 +631,7 @@ function UsuariosIndex() {
       </Collapse>
 
       {/* Collapse para el formulario de agregar un registro incio*/}
-
+      <form onSubmit={handleSubmit((_data) => { })}> 
       <Collapse in={mostrarAgregar}>
         <CardContent
           sx={{
@@ -876,6 +641,13 @@ function UsuariosIndex() {
           }}
         >
           <Grid container spacing={3}>
+          <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={"Agregar Usuario"}
+                  />
+                </Divider>
+            </Grid>
             <Grid
               item
               xs={4}
@@ -894,26 +666,30 @@ function UsuariosIndex() {
                     width: "300px",
                     height: "300px",
                     overflow: "hidden",
+                    boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)", 
+                    borderRadius: '50%'
                   }}
-                >
-                  {image == null ? (
+                >{image == null ? (
                     <img
-                      src="https://i.ibb.co/tLVHzJs/imagen-usuario.png"
+                      src="https://i.ibb.co/RTnx082/kisspng-computer-icons-user-clip-art-user-5abf13db298934-2968784715224718991702.jpg"
                       alt="user"
                     />
                   ) : (
-                    <img
-                      src={image}
-                      alt="uploaded image"
-                      style={{
-                        objectFit: "cover",
-                        width: "100%",
-                        height: "100%",
-                      }}
-                    />
+                    <Image
+                    width={300}
+                    style={{
+                      marginTop: "0",
+                      width: "400px",
+                      height: "300px",
+                      overflow: "hidden",
+                      boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)", 
+                      borderRadius: '50%'
+                    }}
+                    src={image}
+                  />
                   )}
                 </div>
-                <br></br>
+                <br/>
                 <Button
                   startIcon={<Icon>image</Icon>}
                   variant="contained"
@@ -940,7 +716,7 @@ function UsuariosIndex() {
                 />
               </div>
             </Grid>
-
+            
             <Grid item xs={8} style={{ marginTop: "30px" }}>
               <Grid container spacing={3}>
                 {/* Etiqueta "Nuevo Usuario" */}
@@ -956,131 +732,120 @@ function UsuariosIndex() {
 
                 {/* Left column for TextFields */}
                 <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <FormLabel error={!!errorsUsuarios.userNombreUsuario} id="group-label">Nombre Usuario</FormLabel>
-                    <Controller
+                <FormControl fullWidth>
+                <FormLabel error={!!errors.NombreUsuario} id="group-label">Nombre Usuario</FormLabel>
+                  <Controller
                       render={({ field }) => (
                         <TextField
                           {...field}
                           id="outlined"
                           placeholder="Ingrese el nombre de usuario"
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start"></InputAdornment>
-                            ),
+                          inputProps={{
+                            maxLength: 150,
                           }}
-                          error={!!errorsUsuarios.userNombreUsuario}
+                          error={!!errors.NombreUsuario}
                         ></TextField>
                       )}
-                      name="userNombreUsuario"
-                      control={controlUsuarios}
-                    ></Controller>
-                  </FormControl>
+                      name="NombreUsuario"
+                      control={control}
+                    >                 
+                  </Controller>
+              </FormControl>
 
-                  <FormControl fullWidth>
-                    <FormLabel error={!!errorsUsuarios.userContraseña} id="group-label">Contraseña</FormLabel>
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.ContraUsuario} id="group-label">Contraseña</FormLabel>
                     <Controller
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          id="outlined"
-                          placeholder="Ingrese la contraseña"
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start"></InputAdornment>
-                            ),
-                          }}
-                          error={!!errorsUsuarios.userContraseña}
-                        ></TextField>
-                      )}
-                      name="userContraseña"
-                      control={controlUsuarios}
-                    ></Controller>
-                  </FormControl>
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            id="outlined"
+                            placeholder="Ingrese la contraseña"
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start"></InputAdornment>
+                              ),
+                            }}
+                            error={!!errors.ContraUsuario} 
+                          ></TextField>
+                        )}
+                        name="ContraUsuario"
+                        control={control}
+                      >                   
+                    </Controller>
+              </FormControl>
 
-                  <div className="mt-48 mb-16" style={{ marginTop: "15px" }}>
-                    <FormControl fullWidth>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            label="¿Es administrador?"
-                            labelPlacement="top"
-                            checked={checked}
-                            onChange={handleChangeAdmin}
-                            inputProps={{ 'aria-label': 'controlled' }}
-                          />
-                        }
+              <div className="mt-48 mb-16" style={{ marginTop: "15px" }}>
+                <FormControl fullWidth>
+                  <FormControlLabel
+                    control={
+                      <Switch
                         label="¿Es administrador?"
-                        labelPlacement="top"
-                        style={{ marginTop: "25px", marginRight: "20px" }}
+                        labelplacement="top"
+                        checked={checked}
+                        onChange={handleChangeAdmin}
+                        inputProps={{ 'aria-label': 'controlled' }}
                       />
-                    </FormControl>
-
-                  </div>
+                    }
+                    label="¿Es administrador?"
+                    labelPlacement="top"
+                    style={{ marginTop: "25px", marginRight: "20px" }}
+                  />
+                </FormControl>
+              </div>
                 </Grid>
 
                 <Grid item xs={6}>
-                  <Controller
-                    defaultValue={["Selecciona una opción"]}
-                    render={({ field }) => (
-                      <FormControl error={!!errorsUsuarios.empleado} fullWidth>
-                        <FormLabel
-                          className="font-medium text-10"
-                          component="legend"
-                        >
-                          Empleado
-                        </FormLabel>
-                        <Select
-                          {...field}
-                          fullWidth
-                          error={!!errorsUsuarios.empleado}
-                          defaultValue="0"
-                          inputProps={{
-                            startadornment: <InputAdornment position="start" />,
-                          }}
-                        >
-                          {empleadosList.map(empleado => (
-                            <MenuItem key={empleado.empl_Id} value={empleado.empl_Id}>
-                              {empleado.empleado}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                    name="empleado"
-                    control={controlUsuarios}
-                  />
+                <FormControl fullWidth>
+                    <FormLabel error={!!errors.Empleado}>Empleados</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="Empleado"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={Empleados_DDL}
+                            value={datosWatch.Empleado ?? null}
+                            onChange={(event, value) => {
+                              setValue("Empleado", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errors.Empleado} />
+                            )}
+                          />
+                        )}
+                        name="Empleado"
+                        error={!!errors.Empleado}
+                        control={control}
+                      />
+                </FormControl>
 
-                  <Controller
-                    defaultValue={["Selecciona una opción"]}
-                    render={({ field }) => (
-                      <FormControl error={!!errorsUsuarios.rol} fullWidth>
-                        <FormLabel
-                          className="font-medium text-10"
-                          component="legend"
-                        >
-                          Roles
-                        </FormLabel>
-                        <Select
-                          {...field}
-                          fullWidth
-                          error={!!errorsUsuarios.rol}
-                          defaultValue="0"
-                          inputProps={{
-                            startadornment: <InputAdornment position="start" />,
-                          }}
-                        >
-                          {rolesList.map(rol => (
-                            <MenuItem key={rol.role_Id} value={rol.role_Id}>
-                              {rol.rol}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                    name="rol"
-                    control={controlUsuarios}
-                  />
+                <FormControl fullWidth>
+                    <FormLabel error={!!errors.UsuarioRol}>Roles</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="UsuarioRol"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={Roles_DDL}
+                            value={datosWatch.UsuarioRol ?? null}
+                            onChange={(event, value) => {
+                              setValue("UsuarioRol", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errors.UsuarioRol} />
+                            )}
+                          />
+                        )}
+                        name="UsuarioRol"
+                        error={!!errors.UsuarioRol}
+                        control={control}
+                      />
+                </FormControl>
                 </Grid>
               </Grid>
             </Grid>
@@ -1106,7 +871,8 @@ function UsuariosIndex() {
                   color: "white",
                   "&:hover": { backgroundColor: "#6e52ae" },
                 }}
-                onClick={AgregarRegistro}
+                onClick={GuardarUsuarios}
+                type="submit"
               >
                 Guardar
               </Button>
@@ -1121,7 +887,7 @@ function UsuariosIndex() {
                   color: "black",
                   "&:hover": { backgroundColor: "#BFBABA" },
                 }}
-                onClick={CerrarCollapseAgregar}
+                onClick={VisibilidadTabla}
               >
                 Cancelar
               </Button>
@@ -1129,250 +895,8 @@ function UsuariosIndex() {
           </Grid>
         </CardContent>
       </Collapse>
+      </form>
       {/* Collapse para el formulario de agregar un registro Fin*/}
-
-      {/* Collapse para el formulario de editar un registro incio*/}
-
-      <Collapse in={mostrarEditar}>
-        <CardContent
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <Grid container spacing={3}>
-            <Grid
-              item
-              xs={4}
-              style={{
-                marginTop: "30px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <div className="little-profilePhynomo text-center">
-                <div
-                  className="pro-img"
-                  style={{
-                    marginTop: "0",
-                    width: "300px",
-                    height: "300px",
-                    overflow: "hidden",
-                  }}
-                >
-                  {image == null ? (
-                    <img
-                      src="https://i.ibb.co/tLVHzJs/imagen-usuario.png"
-                      alt="user"
-                    />
-                  ) : (
-                    <img
-                      src={image}
-                      alt="uploaded image"
-                      style={{
-                        objectFit: "cover",
-                        width: "100%",
-                        height: "100%",
-                      }}
-                    />
-                  )}
-                </div>
-                <br></br>
-                <Button
-                  startIcon={<Icon>image</Icon>}
-                  variant="contained"
-                  color="primary"
-                  style={{
-                    borderRadius: "10px",
-                    marginRight: "10px",
-                  }}
-                  sx={{
-                    backgroundColor: "#634A9E",
-                    color: "white",
-                    "&:hover": { backgroundColor: "#6e52ae" },
-                  }}
-                  onClick={() => fileInputRef.current.click()}
-                >
-                  Seleccionar imagen
-                </Button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={handleImageChange}
-                />
-              </div>
-            </Grid>
-
-            <Grid item xs={8} style={{ marginTop: "30px" }}>
-              <Grid container spacing={3}>
-                {/* Etiqueta "Nuevo Usuario" */}
-                <Grid
-                  item
-                  xs={12}
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                ></Grid>
-
-                {/* Left column for TextFields */}
-                <Grid item xs={6}>
-                  <Controller
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <FormLabel error={!!errorsUsuariosEditar.userNombreUsuarioEditar} id="group-label">Nombre Usuario</FormLabel>
-                        <TextField
-                          {...field}
-                          id="userNombreUsuarioEditar"
-                          placeholder="Ingrese el nombre de usuario"
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start"></InputAdornment>
-                            ),
-                          }}
-                          error={!!errorsUsuariosEditar.userNombreUsuarioEditar}
-                        ></TextField>
-                      </FormControl>
-                    )}
-                    name="userNombreUsuarioEditar"
-                    control={controlUsuariosEditar}
-                  ></Controller>
-                </Grid>
-
-                <Grid item xs={6}>
-                  <Controller
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <FormLabel
-                          className="font-medium text-10"
-                          component="legend"
-                        >
-                          Empleado
-                        </FormLabel>
-                        <Select
-                          {...field}
-                          fullWidth
-                          value={empleadoSeleccionado}
-                          onChange={e => {
-                            setempleadoSeleccionado(e.target.value)
-                          }}
-                         
-                        >
-                          {empleadosList.map(empleado => (
-                            <MenuItem key={empleado.empl_Id} value={empleado.empl_Id}>
-                              {empleado.empleado}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                    name="empleadoEditar"
-                    control={controlUsuariosEditar}
-                  />
-
-                </Grid>
-
-                <Grid item xs={6}>
-                  <Controller
-                    render={({ field }) => (
-                      <FormControl fullWidth>
-                        <FormLabel
-                          className="font-medium text-10"
-                          component="legend"
-                        >
-                          Roles
-                        </FormLabel>
-                        <Select
-                          {...field}
-                          fullWidth
-                          value={rolSeleccionado}
-                          onChange={e => {
-                            setrolSeleccionado(e.target.value)
-                          }}
-                        >
-                          {rolesList.map(rol => (
-                            <MenuItem key={rol.role_Id} value={rol.role_Id}>
-                              {rol.rol}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                    name="rolEditar"
-                    control={controlUsuariosEditar}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          label="¿Es administrador?"
-                          labelPlacement="top"
-                          checked={checked}
-                          onChange={handleChangeAdmin}
-                          inputProps={{ 'aria-label': 'controlled' }}
-                        />
-                      }
-                      label="¿Es administrador?"
-                      labelPlacement="top"
-                      style={{ marginTop: "25px", marginRight: "20px" }}
-                    />
-                  </FormControl>
-                </Grid>
-              </Grid>
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              sx={{
-                display: "flex",
-                justifyContent: "right",
-                alignItems: "right",
-              }}
-            >
-              <Button
-                startIcon={<Icon>check</Icon>}
-                variant="contained"
-                color="primary"
-                style={{
-                  borderRadius: "10px",
-                  marginRight: "10px",
-                }}
-                sx={{
-                  backgroundColor: "#634A9E",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#6e52ae" },
-                }}
-                onClick={EditarRegistro}
-              >
-                Editar
-              </Button>
-
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: "10px" }}
-                sx={{
-                  backgroundColor: "#DAD8D8",
-                  color: "black",
-                  "&:hover": { backgroundColor: "#BFBABA" },
-                }}
-                onClick={CerrarCollapseEditar}
-              >
-                Cancelar
-              </Button>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
-      {/* Collapse para el formulario de editar un registro Fin*/}
 
       {/* Collapse para mostrar los detalles de un registro inicio*/}
       <Collapse in={mostrarDetalles}>
@@ -1390,6 +914,22 @@ function UsuariosIndex() {
               </Divider>
             </Grid>
             <br></br>
+            <Grid item xs={4}>
+            </Grid>
+            <Grid item xs={8}>
+            <Image
+                    width={300}
+                    style={{
+                      marginTop: "0",
+                      width: "400px",
+                      height: "300px",
+                      overflow: "hidden",
+                      boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)", 
+                      borderRadius: '50%'
+                    }}
+                    src={image}
+                  />
+            </Grid>
             <Grid item xs={12}>
               <Box sx={{ display: "flex", flexDirection: "row" }}>
                 <Grid item xs={1}></Grid>
@@ -1398,7 +938,7 @@ function UsuariosIndex() {
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                       Usuario Id:
                     </Typography>
-                    <Typography>{id}</Typography>
+                    <Typography>{DetallesTabla['usua_Id']}</Typography>
                   </InputLabel>
                 </Grid>
                 <Grid item xs={1}></Grid>
@@ -1406,7 +946,7 @@ function UsuariosIndex() {
                   <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                     Nombre de usuario:
                   </Typography>
-                  <Typography>{usuario}</Typography>
+                  <Typography>{DetallesTabla['usua_Nombre']}</Typography>
                 </InputLabel>
               </Box>
             </Grid>
@@ -1419,7 +959,7 @@ function UsuariosIndex() {
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                       Nombre empleado:
                     </Typography>
-                    <Typography>{empleados}</Typography>
+                    <Typography>{DetallesTabla['empleadoNombreCompleto']}</Typography>
                   </InputLabel>
                 </Grid>
                 <Grid item xs={1}></Grid>
@@ -1427,7 +967,7 @@ function UsuariosIndex() {
                   <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                     Rol:
                   </Typography>
-                  <Typography>{rol}</Typography>
+                  <Typography>{DetallesTabla['role_Descripcion']}</Typography>
                 </InputLabel>
               </Box>
             </Grid>
@@ -1440,7 +980,7 @@ function UsuariosIndex() {
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                       ¿Es administrador?:
                     </Typography>
-                    <Typography>{administrador}</Typography>
+                    <Typography>{ DetallesTabla['usua_EsAdmin'] ? "Es administrador" : "No es administrador"}</Typography>
                   </InputLabel>
                 </Grid>
               </Box>
@@ -1453,32 +993,32 @@ function UsuariosIndex() {
               >
                 <thead>
                   <tr>
-                    <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>edit</Icon>Accion
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>Accion
                     </th>
-                    <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>person</Icon>Usuario
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>Usuario
                     </th>
-                    <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>date_range</Icon>Fecha y
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>date_range</Icon>Fecha y
                       hora
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr style={tableRowStyle}>
-                    <td style={tableCellStyle}>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
                       <strong>Creación</strong>
                     </td>
-                    <td style={tableCellStyle}></td>
-                    <td style={tableCellStyle}></td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DetallesTabla['usuarioCreacionNombre']}</td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DetallesTabla['usua_FechaCreacion'] ? new Date(DetallesTabla['usua_FechaCreacion']).toLocaleString() : ""}</td>
                   </tr>
-                  <tr style={tableRowStyle}>
-                    <td style={tableCellStyle}>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
                       <strong>Modificación</strong>
                     </td>
-                    <td style={tableCellStyle}></td>
-                    <td style={tableCellStyle}></td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DetallesTabla['usuarioModificacionNombre']}</td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DetallesTabla['usua_FechaModificacion'] ? new Date(DetallesTabla['usua_FechaModificacion']).toLocaleString() : ""}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1488,8 +1028,11 @@ function UsuariosIndex() {
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarCollapseDetalles}
                   startIcon={<Icon>arrow_back</Icon>}
+                  onClick={() => {
+                    setmostrarIndex(!mostrarIndex);
+                    setmostrarDetalles(!mostrarDetalles);
+                  }}
                 >
                   Regresar
                 </Button>
@@ -1499,6 +1042,251 @@ function UsuariosIndex() {
         </CardContent>
       </Collapse>
       {/* Collapse para mostrar los detalles de un registro fin*/}
+
+
+      {/* Collapse para el formulario de editar un registro incio*/}
+      <form onSubmit={handleSubmitEditar((_data) => { })}> 
+      <Collapse in={mostrarEditar}>
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Grid container spacing={3}>
+          <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={"Editar Usuario"}
+                  />
+                </Divider>
+            </Grid>
+            <Grid
+              item
+              xs={4}
+              style={{
+                marginTop: "30px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <div className="little-profilePhynomo text-center">
+                <div
+                  className="pro-img"
+                  style={{
+                    marginTop: "0",
+                    width: "300px",
+                    height: "300px",
+                    overflow: "hidden",
+                    boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)", 
+                    borderRadius: '50%'
+                  }}
+                >{image == null ? (
+                    <img
+                      src="https://i.ibb.co/RTnx082/kisspng-computer-icons-user-clip-art-user-5abf13db298934-2968784715224718991702.jpg"
+                      alt="user"
+                    />
+                  ) : (
+                    <Image
+                    width={300}
+                    style={{
+                      marginTop: "0",
+                      width: "400px",
+                      height: "300px",
+                      overflow: "hidden",
+                      boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)", 
+                      borderRadius: '50%'
+                    }}
+                    src={image}
+                  />
+                  )}
+                </div>
+                <br/>
+                <Button
+                  startIcon={<Icon>image</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{
+                    borderRadius: "10px",
+                    marginRight: "10px",
+                  }}
+                  sx={{
+                    backgroundColor: "#634A9E",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#6e52ae" },
+                  }}
+                  onClick={() => fileInputRef.current.click()}
+                >
+                  Seleccionar imagen
+                </Button>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={handleImageChange}
+                />
+              </div>
+            </Grid>
+            
+            <Grid item xs={8} style={{ marginTop: "30px" }}>
+              <Grid container spacing={3}>
+                {/* Etiqueta "Nuevo Usuario" */}
+                <Grid
+                  item
+                  xs={12}
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                ></Grid>
+
+                {/* Left column for TextFields */}
+                <Grid item xs={6}>
+                <FormControl fullWidth>
+                <FormLabel error={!!errorsEditar.NombreUsuarioEditar} id="group-label">Nombre Usuario</FormLabel>
+                  <Controller
+                      render={({ field }) => (
+                        <TextField
+                          {...field}
+                          id="outlined"
+                          placeholder="Ingrese el nombre de usuario"
+                          inputProps={{
+                            maxLength: 150,
+                          }}
+                          error={!!errorsEditar.NombreUsuarioEditar}
+                        ></TextField>
+                      )}
+                      name="NombreUsuarioEditar"
+                      control={controlEditar}
+                    >                 
+                  </Controller>
+              </FormControl>
+
+                <FormControl fullWidth>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        label="¿Es administrador?"
+                        labelplacement="top"
+                        checked={checked}
+                        onChange={handleChangeAdmin}
+                        inputProps={{ 'aria-label': 'controlled' }}
+                      />
+                    }
+                    label="¿Es administrador?"
+                    labelPlacement="top"
+                    style={{ marginTop: "25px", marginRight: "20px" }}
+                  />
+                </FormControl>
+                </Grid>
+
+                <Grid item xs={6}>
+                <FormControl fullWidth>
+                    <FormLabel error={!!errorsEditar.EmpleadoEditar}>Empleados</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="EmpleadoEditar"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={Empleados_DDL}
+                            value={datosWatchEditar.EmpleadoEditar ?? null}
+                            onChange={(event, value) => {
+                              setValueEditar("EmpleadoEditar", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errorsEditar.EmpleadoEditar} />
+                            )}
+                          />
+                        )}
+                        name="EmpleadoEditar"
+                        error={!!errorsEditar.EmpleadoEditar}
+                        control={controlEditar}
+                      />
+                </FormControl>
+
+                <FormControl fullWidth>
+                    <FormLabel error={!!errorsEditar.UsuarioRolEditar}>Roles</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="UsuarioRolEditar"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={Roles_DDL}
+                            value={datosWatchEditar.UsuarioRolEditar ?? null}
+                            onChange={(event, value) => {
+                              setValueEditar("UsuarioRolEditar", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errorsEditar.UsuarioRolEditar} />
+                            )}
+                          />
+                        )}
+                        name="UsuarioRolEditar"
+                        error={!!errorsEditar.UsuarioRolEditar}
+                        control={controlEditar}
+                      />
+                </FormControl>
+                </Grid>
+              </Grid>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              sx={{
+                display: "flex",
+                justifyContent: "right",
+                alignItems: "right",
+              }}
+            >
+              <Button
+                startIcon={<Icon>check</Icon>}
+                variant="contained"
+                color="primary"
+                style={{
+                  borderRadius: "10px",
+                  marginRight: "10px",
+                }}
+                sx={{
+                  backgroundColor: "#634A9E",
+                  color: "white",
+                  "&:hover": { backgroundColor: "#6e52ae" },
+                }}
+                type="submit"
+                onClick={EditarUsuarios}
+              >
+                Guardar
+              </Button>
+
+              <Button
+                startIcon={<Icon>close</Icon>}
+                variant="contained"
+                color="primary"
+                style={{ borderRadius: "10px" }}
+                sx={{
+                  backgroundColor: "#DAD8D8",
+                  color: "black",
+                  "&:hover": { backgroundColor: "#BFBABA" },
+                }}
+                onClick={VisibilidadTablaEditar}
+              >
+                Cancelar
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Collapse>
+      </form>
+      {/* Collapse para el formulario de editar un registro Fin*/}
 
 
       <Dialog
@@ -1536,7 +1324,7 @@ function UsuariosIndex() {
                 color: "white",
                 "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={EliminarRegistro}
+              onClick={ususariosDelete}
             >
               Eliminar
             </Button>
@@ -1558,7 +1346,65 @@ function UsuariosIndex() {
           </Grid>
         </DialogActions>
       </Dialog>
-      <ToastContainer />
+
+
+      <Dialog
+        open={Activar}
+        fullWidth={true}
+        onClose={DialogActivar}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          Confirmación de activación
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            ¿Está seguro(a) que desea activar este usuario?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Grid
+            item
+            xs={12}
+            sx={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "right",
+            }}
+          >
+            <Button
+              startIcon={<Icon>checked</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: "10px", marginRight: "10px" }}
+              sx={{
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
+              }}
+              onClick={ususariosActivar}
+            >
+              Activar
+            </Button>
+
+            <Button
+              startIcon={<Icon>close</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: "10px" }}
+              sx={{
+                backgroundColor: "#DAD8D8",
+                color: "black",
+                "&:hover": { backgroundColor: "#BFBABA" },
+              }}
+              onClick={DialogActivar}
+            >
+              Cancelar
+            </Button>
+          </Grid>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

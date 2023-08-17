@@ -5,6 +5,7 @@ import { memo } from 'react';
 import Logo from '../../../../shared-components/Logo';
 import NavbarToggleButton from '../../../../shared-components/NavbarToggleButton';
 import Navigation from '../../../../shared-components/Navigation';
+import UserNavbarHeader from 'app/theme-layouts/shared-components/UserNavbarHeader';
 
 const Root = styled('div')(({ theme }) => ({
   backgroundColor: theme.palette.background.default,
@@ -45,6 +46,8 @@ function NavbarStyle2Content(props) {
       </div>
 
       <StyledContent option={{ suppressScrollX: true, wheelPropagation: false }}>
+      <UserNavbarHeader />
+
         <Navigation layout="vertical" />
       </StyledContent>
     </Root>

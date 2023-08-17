@@ -1,475 +1,554 @@
 /* eslint-disable no-lone-blocks */
 /* eslint-disable prettier/prettier */
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
-import { Button, ButtonBase, FormControl, Icon, IconButton, InputAdornment, InputLabel, TextField, Avatar, } from "@mui/material";
-import * as React from 'react';
-import Stack from '@mui/material/Stack';
-import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
-import { useState, useRef  } from 'react';
-import SearchIcon from '@mui/icons-material/Search';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
-
-import Collapse from '@mui/material/Collapse';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Box from '@mui/material/Box'
-
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import { height } from '@mui/system';
-
-import FormLabel from "@mui/material/FormLabel";
-import Zoom from '@mui/material/Zoom';
-import Grow from '@mui/material/Grow';
-
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import Swal from 'sweetalert2';
-import { Controller, useForm } from 'react-hook-form';
-import * as yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Card,
+  CardContent,
+  CardMedia,
+  DialogTitle,
+  DialogContentText,
+  DialogContent,
+  DialogActions,
+  Dialog,
+  MenuItem,
+  Divider,
+  Chip,
+  Menu,
+  FormControlLabel,
+  Switch,
+  Autocomplete,
+  Box,
+  Collapse,
+  Typography,
+  Select,
+  Grid,
+  Stack,
+  Button,
+  FormControl,
+  Icon,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  TextField,
+  FormLabel,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+//Imports de validaciones
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { useForm, Controller } from "react-hook-form";
+import { Badge, Dropdown, Space, Table, Tag, Image } from "antd";
+import axios from 'axios';
 
-import { DownOutlined } from '@ant-design/icons';
-import { Badge, Dropdown, Space, Table } from 'antd';
-import { keyBy } from 'lodash';
-import { setActive } from '@material-tailwind/react/components/Tabs/TabsContext';
+//Imports tabla
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+import { useHistory } from "react-router-dom";
+import { ConsoleSqlOutlined } from "@ant-design/icons";
 
-function ModelosMaquinaIndex() {
-  const [users, setUsers] = useState([]);
-  const [searchText, setSearchText] = useState('');
-  const [mostrarIndex, setmostrarIndex] = useState(true);
-  const [mostrarEdit, setmostrarEdit] = useState(false);
-  const [mostrarAdd, setmostrarAdd] = useState(false);
-  const [Eliminar, setEliminar] = useState(false);
-  const [filas, setFilas] = React.useState(10);
-  const [id, setid] = useState('');
-  const [maquina, setmaquina] = useState('');
-  const [mostrarDetails, setmostrarDetails] = useState(false);
-  const [image, setImage] = useState(null);
-  const [maquiImage, setmaquiImage] = useState('');
-  const [message, setMessage] = useState();
-  const [descripcion, setdescripcion] = useState('');
-  const [marca, setmarca] = useState('');
-  const [funcion, setfuncion] = useState('');
-  const [anchorEl, setAnchorEl] = useState({});
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+
+//Import ddls
+import load_DDLs from "src/app/loadDDLs/Load_DDL";
+
+//import Toast
+import "react-toastify/dist/ReactToastify.css";
+import InputMask from "react-input-mask";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+import { MotorcycleOutlined } from "@material-ui/icons";
+import ModelosMaquinaServices from "./ModelosMaquinaService";
+
+
+{/*Constantes para validaciones Agregar inicio */ }
+const defaultModelosMaquinaValues = {
+  mmaq_Nombre: "",
+  marq_Id: null,
+  func_Id: null
+}
+
+const ModelosMaquinasSchema = yup.object().shape({
+  mmaq_Nombre: yup.string().trim().required(),
+  marq_Id: yup.object().required(""),
+  func_Id: yup.object().required(""),
+});
+
+{/*Constantes para validaciones Agregar fin */ }
+
+{/*Constantes para validaciones Editar inicio */ }
+const camposModelosMaquinasEditar = {
+  mmaq_NombreEditar: "",
+  marq_IdEditar: null,
+  func_IdEditar: null,
+};
+
+const schemaModelosMaquinasEditar = yup.object().shape({
+  mmaq_NombreEditar: yup.string().trim().required(),
+  marq_IdEditar: yup.object().required(""),
+  func_IdEditar: yup.object().required(""),
+});
+{/*Constantes para validaciones Editar fin */ }
+
+
+const iconStyle = {
+  marginRight: "5px",
+  verticalAlign: "middle",
+  color: "#634a9e",
+};
+
+const tableRowStyle = {
+  "&:hover": {
+    backgroundColor: "coral",
+  },
+};
+
+const tableCellStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+};
+
+const tableHeaderStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+  backgroundColor: "#f2f2f2",
+};
+function ModelosMaquinas() {
+
+
   const fileInputRef = useRef(null);
 
-  const DialogEliminar = () => {
-    setEliminar(!Eliminar);
+  //Constante para la busqueda del datatable
+  const [searchText, setSearchText] = useState("");
+
+  //Constante para mostrar el index de la pantalla
+  const [mostrarIndex, setmostrarIndex] = useState(true);
+
+  //Constante para las filas que tendrá cada paginación del datatable
+  const [filas, setFilas] = React.useState(10);
+
+  //Constantes para los Collapse de agregar, editar y detalles 
+  const [mostrarAgregar, setmostrarAgregar] = useState(false);
+  const [mostrarEditar, setmostrarEditar] = useState(false);
+  const [mostrarDetalles, setmostrarDetalles] = useState(false);
+  const [Eliminar, setEliminar] = useState(false);
+  const [editar, setEditar] = useState(false);
+  const [Id, setId] = useState(0);
+  const [DetallesTabla, setDetallesTabla] = useState([])
+  const [image, setimage] = useState('https://i.ibb.co/rwp91Z1/maq.webp');
+
+  //Constante para el boton de opciones
+  const [anchorEl, setAnchorEl] = useState({});
+
+  const camposToFilter = ["key", "mmaq_Nombre", "marcaMaquina", "funcionMaquina"];
+
+  /* Datos de la tabla */
+  const [data, setData] = useState([]);
+
+
+  //Variables DDL
+  const [MarcasDDL, setMarcasDDL] = useState([]);
+  const [FuncionesDDL, setFuncionesDDL] = useState([]);
+
+  //Variables oara setear la cantidad de registro que se mostraran en la tabla
+  const handleChange = (event) => {
+    setFilas(event.target.value);
   };
 
+  //Cargado de las variables DDL
+  async function ddls() {
+    setMarcasDDL(await load_DDLs.MarcasMaquinas());
+    setFuncionesDDL(await load_DDLs.FuncionesMaquinas());
+  }
+
+  //Peticion para cargar datos de la tabla
+  const ListarModelosMaquina = async () => {
+    try {
+      setData(await ModelosMaquinaServices.ListarModelosMaquina());
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTabla = async () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAgregar(!mostrarAgregar);
+    setTimeout(() => {
+      reset(defaultModelosMaquinaValues);
+      setimage('https://i.ibb.co/rwp91Z1/maq.webp');
+    }, "1000");
+    setMarcasDDL(await load_DDLs.MarcasMaquinas());
+    setFuncionesDDL(await load_DDLs.FuncionesMaquinas());
+  };
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTablaEditar = async () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarEditar(!mostrarEditar);
+    setTimeout(() => {
+      resetEditar(camposModelosMaquinasEditar);
+      setimage('https://i.ibb.co/rwp91Z1/maq.webp');
+    }, "1000");
+    setMarcasDDL(await load_DDLs.MarcasMaquinas());
+    setFuncionesDDL(await load_DDLs.FuncionesMaquinas());
+  };
+
+
+
+  //Controlador de la barra buscadora de la tabla
+  const handleSearchChange = (event) => {
+    setSearchText(event.target.value);
+  };
+
+  //Constante para el cerrrar las opciones del boton de opciones  
   const handleClose = (id) => {
-    setAnchorEl(prevState => ({
+    setAnchorEl((prevState) => ({
       ...prevState,
       [id]: null,
     }));
   };
 
-  //Constante que filtra las imagenes por medio de un FileReader que
-  // Basicamente proporciona una interfaz para leer de
-  //forma asíncrona el contenido de un 
-  //archivo desde una aplicación web
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        setImage(reader.result);
-      };
-    } else {
-      ToastWarningImagen();
-    }
-  };
-
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (rowId, descripcion, marca, funcion, maquina) => {
-    setid(rowId);
-    setdescripcion(descripcion);
-    setmarca(marca);
-    setfuncion(funcion);
-    setmaquina(maquina);
-    //const tableRows = document.querySelectorAll('#detallesTabla tbody tr')
-    //tableRows[0].cells[1].textContent = localStorage.getItem('Masiso rey')
-    //tableRows[0].cells[2].textContent = localStorage.getItem('Que crack que sos')
-    //tableRows[1].cells[1].textContent = localStorage.getItem('Ombe trabaje')
-    //tableRows[1].cells[2].textContent = localStorage.getItem('Muchachos escucharon el rempalago?')
-  };
-
-
-  const handleEdit = (id, descripcion, marca, funcion, maquina) => {
-    setdescripcion(descripcion);
-    setmarca(marca);
-    setfuncion(funcion);
-    setmaquina(maquina);
-    setid(id);
-    MostrarCollapseEditar();
-    handleClose(id);
-  };
-
-  const handleDetails = (id, descripcion, marca, funcion, maquina) => {
-    DetallesTabla(id, descripcion, marca, funcion, maquina);
-    MostrarCollapseDetalles();
-    handleClose(id);
-  };
-
-  const handleDelete = (id) => {
-    DialogEliminar();
-    handleClose(id);
-  };
-
-  const columns2 = [
-    {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      sorter: (a, b) => a.id - b.id, //sorting para Numeros
-    },
-    {
-      title: 'Descripción',
-      dataIndex: 'descripcion',
-      key: 'descripcion',
-      sorter: (a, b) => a.descripcion.localeCompare(b.rtn), //sorting para Letras
-    },
-    {
-      title: 'Marca',
-      dataIndex: 'marca',
-      key: 'marca',
-      sorter: (a, b) => a.marca.localeCompare(b.rtn), //sorting para Letras
-    },
-    {
-      title: 'Función',
-      dataIndex: 'funcion',
-      key: 'funcion',
-      sorter: (a, b) => a.funcion.localeCompare(b.rtn), //sorting para Letras
-    },
-    {
-      title: 'Acciones',
-      key: 'operation',
-      render: (params) =>
-        <div key={params.id}>
-          <Stack direction="row" spacing={1}>
-            <Button
-              aria-controls={`menu-${params.id}`}
-              aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
-              variant="contained"
-              style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
-              startIcon={<Icon>menu</Icon>}
-            >
-              Opciones
-            </Button>
-            <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
-              keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
-            >
-              <MenuItem onClick={() => handleEdit(params.id, params.marca, params.funcion, params.descripcion, params.maquina)}>
-                <Icon>edit</Icon> Editar
-              </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id, params.marca, params.funcion, params.descripcion, params.maquina)}>
-                <Icon>visibility</Icon> Detalles
-              </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.id)}>
-                <Icon>delete</Icon> Eliminar
-              </MenuItem>
-            </Menu>
-          </Stack>
-        </div>
-      ,
-    },
-  ];
-
-  const data2 = [
-    { id: '1', descripcion: 'Maquina de costura', marca: 'Sterling', funcion: 'Corte' },
-    { id: '2', descripcion: 'Maquina de costura', marca: 'Sterling', funcion: 'Ensamblaje' },
-    { id: '3', descripcion: 'Maquina de costura', marca: 'Sterling', funcion: 'Acabado' },
-    { id: '4', descripcion: 'Maquina de costura', marca: 'Sterling', funcion: 'Bordado' },
-  ];
-
-  const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
-  };
-
-  const handleChange = (event) => {
-    setFilas(event.target.value);
-  };
-
-  {/*Filtrado de datos*/ }
-  const filteredRows = data2.filter((row) =>
-    Object.values(row).some((value) =>
-      typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
-
-  const defaultAccountValues = {
-    descripcion: '',
-    Select: '',
-    funcion: '',
-  }
-
-  const accountSchema = yup.object().shape({
-    descripcion: yup.string().required(),
-    Select: yup.string().required(),
-    funcion: yup.string().required()
-  })
-
-  {/* Función para mostrar la tabla y mostrar agregar */ }
-  const MostrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAdd(!mostrarAdd);
-    reset(defaultAccountValues);
-  };
-
-  const MostrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEdit(!mostrarEdit);
-    reset(defaultAccountValues);
-  };
-
-  const CerrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAdd(!mostrarAdd);
-    reset(defaultAccountValues);
-  };
-
-  const MostrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetails(!mostrarDetails);
-  };
-
-  const CerrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEdit(!mostrarEdit);
-    reset(defaultAccountValues);
-  };
-
-  const { handleSubmit, register, reset, control, watch, formState } = useForm({
-    defaultAccountValues,
-    mode: 'all',
-    resolver: yupResolver(accountSchema),
-  });
-
-  const { isValid, dirtyFields, errors } = formState;
-
-  const ToastSuccess = () => {
-    toast.success('Datos ingresados correctamente.', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastSuccessEditar = () => {
-    toast.success('Datos Editados correctamente.', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastWarning = () => {
-    toast.warning('No se permiten campos vacios.', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastWarningImagen = () => {
-    toast.warning("El archivo tiene que ser una imagen.",{
-      theme: 'dark',
-      //position: toast.POSITION.BOTTOM_RIGHT,
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 3000,
-      closeOnClick: true
-    });
-  }
-
-  const ToastWarningImagenSeleccionar = () => {
-    toast.warning("La imagen es requerida.",{
-      theme: 'dark',
-      //position: toast.POSITION.BOTTOM_RIGHT,
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 3000,
-      closeOnClick: true
-    });
-  }
- 
-  //Validaciones para el Agregar de la Pantalla 
-  const ValidacionAgregar = (data) => {
-    if (image != null) {
-      if (data.funcion.length != 0 && data.Select.length != 0) {
-        if (data.descripcion != null) {
-          if (data.descripcion.trim() === "" || data.Select[0] === "Selecciona una opción" || data.funcion[0] === "Selecciona una opción") {         
-            ToastWarning();
-          } else {
-            MostrarCollapseAgregar();          
-            ToastSuccess();
-          }
-        } else {
-          ToastWarning();
-        }
-      } else {
-        ToastWarning();
-      }
-    } else {
-      ToastWarningImagenSeleccionar();
-    }  
-  };
-
-  const ValidacionesEditar = (data) => {
-    if (data.funcion.length != 0) {
-      if (data.Select.length != 0) {
-        if (data.descripcion != null) {
-          if (data.descripcion.trim() === "" || data.Select[0] === "Selecciona una opción" || data.funcion[0] === "Selecciona una opción") {
-            ToastWarning();
-          } else if (data.descripcion.trim() === "" || data.Select === "" || data.funcion === "") {
-            ToastWarning();
-          } else {
-            MostrarCollapseEditar();
-            ToastSuccessEditar();
-          }
-        }
-        else {
-          ToastWarning();
-        }
-      } else {
-        ToastWarning();
-      }
-    } else {
-      if (data.descripcion.trim() === "" || data.Select === "" || data.funcion === "") {
-        ToastWarning();
-      }
-    }
-  };
-
+  //Constante cuando se hace click para el boton de opciones
   const handleClick = (event, id) => {
-    setAnchorEl(prevState => ({
+    setAnchorEl((prevState) => ({
       ...prevState,
       [id]: event.currentTarget,
     }));
   };
 
-  const CerrarCollapseDetalles = () => {
+  const DialogEliminar = () => {
+    setEliminar(!Eliminar);
+  };
+
+
+  //Constante para la accción de eliminar y que abre el dialog de eliminar en el index y cierra el boton de opciones
+  const handleDelete = (datos) => {
+    setValue('mmaq_Id', datos['mmaq_Id']);
+    DialogEliminar();
+    handleClose(datos.mmaq_Id);
+  };
+
+
+  const handleDetails = (datos) => {
+    setDetallesTabla(datos);
     setmostrarIndex(!mostrarIndex);
-    setmostrarDetails(!mostrarDetails);
+    setmostrarDetalles(!mostrarDetalles);
+    handleClose(datos.mmaq_Id);
   };
 
+  //Handle que inicia la funcion de editar
+  const handleEdit = (datos) => {
 
-  const AgregarRegistro = () => {
-    const formData = watch();
-    ValidacionAgregar(formData);
+    setimage(datos.mmaq_Imagen)
+
+    setValueEditar('mmaq_NombreEditar', datos.mmaq_Nombre)
+
+
+
+
+    setValueEditar(
+      "marq_IdEditar",
+      MarcasDDL.find((MarcasDDL) => MarcasDDL.value === datos.marq_Id) //importante para cargar bien los ddl al editar
+    );
+
+    setValueEditar(
+      "func_IdEditar",
+      FuncionesDDL.find((FuncionesDDL) => FuncionesDDL.value === datos.func_Id) //importante para cargar bien los ddl al editar
+    );
+
+    setId(datos.mmaq_Id);
     setTimeout(() => {
-      handleSubmit(ValidacionAgregar)();
-    }, "250")
+      setmostrarIndex(!mostrarIndex);
+      setmostrarEditar(!mostrarEditar);
+    }, "250");
+    handleClose(datos.mmaq_Id);
   };
 
-  const EditarRegistro = () => {
-    const formData = watch();
-    ValidacionesEditar(formData);
-    setTimeout(() => {
-      handleSubmit(ValidacionesEditar)();
-    }, "250")
+
+  //Constante que filtra las imagenes por medio de un FileReader
+  //que basicamente proporciona una interfaz para leer de
+  //forma asíncrona el contenido de un
+  //archivo desde una aplicación web
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        setimage(reader.result);
+      };
+    } else {
+      ToastWarning("Archivo incorrecto");
+    }
   };
 
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
+  //useEffect para cargar datos al ingresar a la pantalla
+  useEffect(() => {
+    ddls();
+    ListarModelosMaquina();
+  }, []);
 
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
 
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
+  const columns = [
+    {
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
     },
+    {
+      title: "Nombre",
+      dataIndex: "mmaq_Nombre",
+      key: "mmaq_Nombre",
+      sorter: (a, b) => a.mmaq_Nombre.localeCompare(b.mmaq_Nombre), //sorting para Letras
+    },
+    {
+      title: "Marca",
+      dataIndex: "marcaMaquina",
+      key: "marcaMaquina",
+      sorter: (a, b) => a.marcaMaquina.localeCompare(b.marcaMaquina), //sorting para Letras
+    },
+    {
+      title: "Función",
+      dataIndex: "funcionMaquina",
+      key: "funcionMaquina",
+      sorter: (a, b) => a.funcionMaquina.localeCompare(b.funcionMaquina), //sorting para Letras
+    },
+    {
+      title: "Acciones",
+      key: "operation",
+      render: (params) => (
+        <div key={params.mmaq_Id}>
+          <Stack direction="row" spacing={1}>
+            <Button
+              aria-controls={`menu-${params.mmaq_Id}`}
+              aria-haspopup="true"
+              onClick={(e) => handleClick(e, params.mmaq_Id)}
+              variant="contained"
+              style={{
+                borderRadius: "10px",
+                backgroundColor: "#634A9E",
+                color: "white",
+              }}
+              startIcon={<Icon>menu</Icon>}
+            >
+              Opciones
+            </Button>
+            <Menu
+              id={`menu-${params.mmaq_Id}`}
+              anchorEl={anchorEl[params.mmaq_Id]}
+              keepMounted
+              open={Boolean(anchorEl[params.mmaq_Id])}
+              onClose={() => handleClose(params.mmaq_Id)}
+            >
+              <MenuItem onClick={() => handleEdit(params)}>
+                <Icon>edit</Icon>ㅤEditar
+              </MenuItem>
+              <MenuItem onClick={() => handleDetails(params)}>
+                <Icon>visibility</Icon>ㅤDetalles
+              </MenuItem>
+              <MenuItem onClick={() => handleDelete(params)}>
+                <Icon>delete</Icon>ㅤEliminar
+              </MenuItem>
+            </Menu>
+          </Stack>
+        </div>
+      ),
+    },
+  ];
+
+  //Constante que ayuda a filtrar el datatable
+  const filteredRows = data.filter((row) => {
+    if (searchText === "") {
+      return true; // Mostrar todas las filas si el buscador está vacío
+    }
+
+    for (const [key, value] of Object.entries(row)) {
+      if (camposToFilter.includes(key)) {
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
+        if (formattedValue.includes(formattedSearchText)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
+
+
+  //Declaracion del formulario
+  const { handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
+    defaultModelosMaquinaValues, //Campos del formulario
+    mode: "all",
+    resolver: yupResolver(ModelosMaquinasSchema), //Esquema del formulario
+  });
+
+  //Validacion de campos vacios y errores
+  const { isValid, dirtyFields, errors } = formState;
+
+  //Datos del formulario
+  const datosWatch = watch();
+
+
+  //Declaracion del formulario de editar
+  const { handleSubmit: handleSubmitEditar, reset: resetEditar, control: controlEditar, watch: watchEditar, formState: formStateEditar, setValue: setValueEditar } = useForm({
+    camposModelosMaquinasEditar, //Campos del formulario
+    mode: "all",
+    resolver: yupResolver(schemaModelosMaquinasEditar), //Esquema del formulario
+  });
+
+  //Validacion de campos vacios y errores
+  const { isValid: isValidEditar, dirtyFields: dirtyFieldsEditar, errors: errorsEditar } = formStateEditar;
+
+  //Datos del formulario
+  const datosWatchEditar = watchEditar();
+
+  //Controlador del formulario
+  const GuardarModeloMaquina = () => {
+    if (datosWatch.mmaq_Id === null || datosWatch.func_Id === null) {
+      ToastWarning("Completa todos los campos");
+    } else {
+      if (!isValid) {
+        ToastWarning("Completa todos los campo2222s");
+      } else {
+        CrearModeloMaquina();
+      }
+    }
   };
 
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
+  //Controlador del formulario
+  const EditarModeloMaquina = () => {
+    if ((datosWatchEditar.marq_IdEditar === undefined || datosWatchEditar.func_IdEditar === null)) {
+      ToastWarning("Completa todos los campos");
+    } else {
+      if (datosWatchEditar.mmaq_NombreEditar !== "" && datosWatchEditar.marq_IdEditar !== null && datosWatchEditar.func_IdEditar !== null) {
+        EditarModeloMaquinassssssssssss();
+      } else {
+        ToastWarning("Completa todos los campos");
+      }
+    }
   };
+
+  //Peticion para crear un registro
+  const CrearModeloMaquina = async () => {
+    try {
+      const response = await ModelosMaquinaServices.CrearModeloMaquina(datosWatch, image);
+      if (response.data.data.messageStatus === "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        ListarModelosMaquina();
+        VisibilidadTabla();
+        reset(defaultModelosMaquinaValues);
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
+    }
+  };
+
+  // Peticion para editar un registro
+  const EditarModeloMaquinassssssssssss = async () => {
+    try {
+      const response = await ModelosMaquinaServices.EditarModeloMaquina(datosWatchEditar, Id, image);
+
+      if (response.data.data.messageStatus == 1) {
+        ToastSuccess("El registro se ha editado exitosamente");
+        setTimeout(() => {
+          resetEditar(camposModelosMaquinasEditar);
+        }, "500");
+        ListarModelosMaquina();
+        VisibilidadTablaEditar();
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
+    }
+  };
+
+  // Peticion para eliminar un registro
+
+  const EliminarModelosMaquina = async () => {
+    try {
+      const response = await ModelosMaquinaServices.EliminarModeloMaquina(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        DialogEliminar();
+        ToastSuccess("El registro ha sido eliminado exitosamente");
+        ListarModelosMaquina();
+        VisibilidadTabla();
+        reset(defaultModelosMaquinaValues);
+      } else if (response.data.data.messageStatus.includes("0")) {
+        DialogEliminar();
+        ToastError("El registro está en uso");
+      }
+    } catch (error) {
+      DialogEliminar();
+      ToastError("Error inesperado");
+    }
+  }
+
+
 
   return (
-
-    <Card sx={{ minWidth: 275, margin: '40px' }}>
+    <Card sx={{ minWidth: 275, margin: "40px" }}>
       <CardMedia
         component="img"
         height="200"
-        image="https://i.ibb.co/CbPV4Xy/MODELOS-DE-M-QUINA.png "
+        image="https://i.ibb.co/CbPV4Xy/MODELOS-DE-M-QUINA.png"
         alt="Encabezado de la carta"
       />
       <Collapse in={mostrarIndex}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
           {/* Botón de Nuevo */}
           <Stack direction="row" spacing={1}>
             <Button
               startIcon={<Icon>add</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px' }}
+              style={{ borderRadius: "10px" }}
               sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={() => {
+                VisibilidadTabla()
+                setEditar(false)
+              }}
             >
               Nuevo
             </Button>
           </Stack>
 
           <Stack direction="row" spacing={1}>
-            <label className='mt-8'>Filas por página:</label>
+            <label className="mt-8">Filas por página:</label>
             <FormControl sx={{ minWidth: 50 }} size="small">
               {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
               <Select
                 labelId="demo-select-small-label"
                 id="demo-select-small"
                 value={filas}
-                // label="Filas"  
+                // label="Filas"
                 onChange={handleChange}
               >
                 <MenuItem value={10}>10</MenuItem>
@@ -480,14 +559,14 @@ function ModelosMaquinaIndex() {
 
             {/* Barra de Busqueda en la Tabla */}
             <TextField
-              style={{ borderRadius: '10px' }}
-              placeholder='Buscar'
+              style={{ borderRadius: "10px" }}
+              placeholder="Buscar"
               value={searchText}
               onChange={handleSearchChange}
               size="small"
               variant="outlined"
-              InputProps={{
-                startAdornment: (
+              inputProps={{
+                startadornment: (
                   <InputAdornment position="start">
                     <IconButton edge="start">
                       <SearchIcon />
@@ -496,321 +575,321 @@ function ModelosMaquinaIndex() {
                 ),
               }}
             />
-
           </Stack>
         </CardContent>
-      </Collapse>
 
-      {/* Tabla */}
-      <Collapse in={mostrarIndex}>
-        <div className='center' style={{ width: '95%', margin: 'auto' }}>
-
+        {/* Tabla */}
+        <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
-            columns={columns2}
-            // expandable={{
-            //   expandedRowRender: (record) => <Table columns={columns} dataSource={record.tabla} pagination={false} />,
-            //   rowExpandable: (record) => record.name !== 'Not Expandable',
-            // }}
+            columns={columns}
             dataSource={filteredRows}
             size="small"
-            pagination={{
-              pageSize: filas
-              , className: 'decoration-white'
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
             }}
-
+            pagination={{
+              pageSize: filas,
+              showSizeChanger: false,
+              className: "custom-pagination",
+            }}
           />
         </div>
       </Collapse>
 
-      {/* Formulario Agregar */}
-      <Collapse in={mostrarAdd}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Grid container spacing={3}>
-            <Grid item xs={4}>
-              <div className='little-profilePhynomo text-center'>
-                <div className="pro-imgPhynomo" style={{ marginTop: "0", width: '300px', height: '300px', overflow: 'hidden' }}>
-                  {image == null ? <img src={image} alt="user" /> : <img src={image} alt="uploaded image" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />}
-                </div>
-                <button className="btn btn-pill btn-outline-light" type='button' onClick={() => fileInputRef.current.click()}>Seleccionar imagen</button>
-                <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
-              </div>
-            </Grid>
-
-            <Grid item xs={8} >
-            <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Nombre de la Máquina
-                    </FormLabel>
-              <Controller
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    variant="outlined"
-                    error={!!errors.descripcion}
-                    fullWidth
-                    InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
+      {/* Collapse para el formulario de agregar un registro incio*/}
+      <form onSubmit={handleSubmit((_data) => { })}>
+        <Collapse in={mostrarAgregar}>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={"Agregar Modelo de Máquina"}
                   />
-                )}
-                name="descripcion"
-                control={control}
-              />
-
-              <Controller
-                defaultValue={["Selecciona una opción"]}
-                render={({ field }) => (
-                  <FormControl error={!!errors.Select} fullWidth style={{ marginTop: '10px' }}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Marcas
-                    </FormLabel>
-                    <Select
-                      {...field}
-                      fullWidth
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start" />,
+                </Divider>
+              </Grid>
+              <Grid
+                item
+                xs={4}
+                style={{
+                  marginTop: "30px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <div className="little-profilePhynomo text-center">
+                  <div
+                    className="pro-img"
+                    style={{
+                      marginTop: "0",
+                      width: "300px",
+                      height: "300px",
+                      overflow: "hidden",
+                      boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                      borderRadius: '50%'
+                    }}
+                  >{image == null ? (
+                    <img
+                      src="https://i.ibb.co/RTnx082/kisspng-computer-icons-user-clip-art-user-5abf13db298934-2968784715224718991702.jpg"
+                      alt="maqui"
+                    />
+                  ) : (
+                    <Image
+                      width={300}
+                      style={{
+                        marginTop: "0",
+                        width: "400px",
+                        height: "300px",
+                        overflow: "hidden",
+                        boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                        borderRadius: '50%'
                       }}
-                    >
-                      <MenuItem value="10">Sterling</MenuItem>
-                      <MenuItem value="20">Singer</MenuItem>
-                      <MenuItem value="30">Alfa</MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-                name="Select"
-                control={control}
-              />
-              <Controller
-                defaultValue={["Selecciona una opción"]}
-                render={({ field }) => (
-                  <FormControl error={!!errors.funcion} fullWidth style={{ marginTop: '10px' }}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Función
-                    </FormLabel>
-                    <Select
-                      {...field}
-                      fullWidth
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start" />,
-                      }}
-                    >
-                      <MenuItem value="10">Coser</MenuItem>
-                      <MenuItem value="20">Ensamblaje</MenuItem>
-                      <MenuItem value="30">Acabado</MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-                name="funcion"
-                control={control}
-              />
+                      src={image}
+                    />
+                  )}
+                  </div>
+                  <br />
+                  <Button
+                    startIcon={<Icon>image</Icon>}
+                    variant="contained"
+                    color="primary"
+                    style={{
+                      borderRadius: "10px",
+                      marginRight: "10px",
+                    }}
+                    sx={{
+                      backgroundColor: "#634A9E",
+                      color: "white",
+                      "&:hover": { backgroundColor: "#6e52ae" },
+                    }}
+                    onClick={() => fileInputRef.current.click()}
+                  >
+                    Seleccionar imagen
+                  </Button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    onChange={handleImageChange}
+                  />
+                </div>
+              </Grid>
 
-              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <Grid item xs={8} style={{ marginTop: "80px" }}>
+                <Grid container spacing={3}>
+                  <Grid item xs={6}>
+                    <FormControl fullWidth>
+                      <FormLabel error={!!errors.mmaq_Nombre} id="group-label">
+                        Modelo:
+                      </FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            id="outlined"
+                            placeholder="Ingrese el nombre del modelo"
+                            inputProps={{
+                              maxLength: 150,
+                            }}
+                            error={!!errors.mmaq_Nombre}
+                          />
+                        )}
+                        name="mmaq_Nombre"
+                        control={control}
+                      />
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={6}>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12}>
+                        <FormControl fullWidth>
+                          <FormLabel error={!!errors.marq_Id}>Marca</FormLabel>
+                          <Controller
+                            render={({ field }) => (
+                              <Autocomplete
+                                {...field}
+                                id="marq_Id"
+                                isOptionEqualToValue={(option, value) =>
+                                  option.value === value?.value
+                                }
+                                options={MarcasDDL}
+                                value={datosWatch.marq_Id ?? null}
+                                onChange={(event, value) => {
+                                  setValue("marq_Id", value);
+                                }}
+                                renderInput={(params) => (
+                                  <TextField {...params} error={!!errors.marq_Id} />
+                                )}
+                              />
+                            )}
+                            name="marq_Id"
+                            error={!!errors.marq_Id}
+                            control={control}
+                          />
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <FormLabel error={!!errors.func_Id}>Función</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="func_Id"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={FuncionesDDL}
+                            value={datosWatch.func_Id ?? null}
+                            onChange={(event, value) => {
+                              setValue("func_Id", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errors.func_Id} />
+                            )}
+                          />
+                        )}
+                        name="func_Id"
+                        error={!!errors.func_Id}
+                        control={control}
+                      />
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </Grid>
+              <Grid
+                item
+                xs={12}
+                sx={{
+                  display: "flex",
+                  justifyContent: "right",
+                  alignItems: "right",
+                }}
+              >
                 <Button
-                  startIcon={<Icon>checked</Icon>}
+                  startIcon={<Icon>check</Icon>}
                   variant="contained"
                   color="primary"
-                  style={{ borderRadius: '10px', marginRight: '10px' }}
-                  sx={{
-                    backgroundColor: '#634A9E', color: 'white',
-                    "&:hover": { backgroundColor: '#6e52ae' },
+                  style={{
+                    borderRadius: "10px",
+                    marginRight: "10px",
                   }}
-                  onClick={AgregarRegistro}
+                  sx={{
+                    backgroundColor: "#634A9E",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#6e52ae" },
+                  }}
+                  onClick={GuardarModeloMaquina}
+                  type="submit"
                 >
                   Guardar
                 </Button>
+
                 <Button
                   startIcon={<Icon>close</Icon>}
                   variant="contained"
                   color="primary"
-                  style={{ borderRadius: '10px' }}
+                  style={{ borderRadius: "10px" }}
                   sx={{
-                    backgroundColor: '#DAD8D8', color: 'black',
-                    "&:hover": { backgroundColor: '#BFBABA' },
+                    backgroundColor: "#DAD8D8",
+                    color: "black",
+                    "&:hover": { backgroundColor: "#BFBABA" },
                   }}
-                  onClick={CerrarCollapseAgregar}
+                  onClick={VisibilidadTabla}
                 >
                   Cancelar
                 </Button>
               </Grid>
             </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
-
-      {/* Formulario Editar */}
-      <Collapse in={mostrarEdit}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Grid container spacing={3}>
-            <Grid item xs={4}>
-              <div className='little-profilePhynomo text-center'>
-                <div className="pro-imgPhynomo" style={{ marginTop: "0", width: '300px', height: '300px', overflow: 'hidden' }}>
-                  {image == null ? <img src={maquiImage} alt="user" /> : <img src={image} alt="uploaded image" style={{ objectFit: 'cover', width: '100%', height: '100%' }} />}
-                </div>
-                <button className="btn btn-pill btn-outline-light" type='button' onClick={() => fileInputRef.current.click()}>Seleccionar imagen</button>
-                <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
-              </div>
-            </Grid>
-
-            <Grid item xs={8} >
-            <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Nombre de la Máquina
-                    </FormLabel>
-              <Controller
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    variant="outlined"
-                    error={!!errors.descripcion}
-                    fullWidth
-                    InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                  />
-                )}
-                name="descripcion"
-                control={control}
-              />
-
-              <Controller
-                defaultValue={["Selecciona una opción"]}
-                render={({ field }) => (
-                  <FormControl error={!!errors.Select} fullWidth style={{ marginTop: '10px' }}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Marcas
-                    </FormLabel>
-                    <Select
-                      {...field}
-                      fullWidth
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start" />,
-                      }}
-                    >
-                      <MenuItem value="10">Sterling</MenuItem>
-                      <MenuItem value="20">Singer</MenuItem>
-                      <MenuItem value="30">Alfa</MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-                name="Select"
-                control={control}
-              />
-              <Controller
-                defaultValue={["Selecciona una opción"]}
-                render={({ field }) => (
-                  <FormControl error={!!errors.funcion} fullWidth style={{ marginTop: '10px' }}>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Función
-                    </FormLabel>
-                    <Select
-                      {...field}
-                      fullWidth
-                      InputProps={{
-                        startAdornment: <InputAdornment position="start" />,
-                      }}
-                    >
-                      <MenuItem value="10">Coser</MenuItem>
-                      <MenuItem value="20">Ensamblaje</MenuItem>
-                      <MenuItem value="30">Acabado</MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-                name="funcion"
-                control={control}
-              />
-
-              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-                <Button
-                  startIcon={<Icon>checked</Icon>}
-                  variant="contained"
-                  color="primary"
-                  style={{ borderRadius: '10px', marginRight: '10px' }}
-                  sx={{
-                    backgroundColor: '#634A9E', color: 'white',
-                    "&:hover": { backgroundColor: '#6e52ae' },
-                  }}
-                  onClick={EditarRegistro}
-                >
-                  Editar
-                </Button>
-                <Button
-                  startIcon={<Icon>close</Icon>}
-                  variant="contained"
-                  color="primary"
-                  style={{ borderRadius: '10px' }}
-                  sx={{
-                    backgroundColor: '#DAD8D8', color: 'black',
-                    "&:hover": { backgroundColor: '#BFBABA' },
-                  }}
-                  onClick={CerrarCollapseEditar}
-                >
-                  Cancelar
-                </Button>
-              </Grid>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Collapse>
+          </CardContent>
+        </Collapse>
+      </form>
+      {/* Collapse para el formulario de agregar un registro Fin*/}
 
       {/* Collapse para mostrar los detalles de un registro inicio*/}
-      <Collapse in={mostrarDetails}>
+      <Collapse in={mostrarDetalles}>
         <CardContent
           sx={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
+            justifyContent: "center", // Centra horizontalmente
+            alignItems: "center", // Centra verticalmente
+            minHeight: "100%", // Asegura que ocupe al menos todo el alto disponible
           }}
         >
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <h2>Detalles de los Modelos de Maquina</h2>
+          <Grid container spacing={3} >
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: "0px", marginBottom: "10px" }}>
+                <Chip label="DETALLES DE LOS MODELOS DE LAS MAQUINAS" />
+              </Divider>
             </Grid>
-            <Grid item xs={12}>
-              <Box sx={{ display: "flex", flexDirection: "row" }}>
-                <Box sx={{ flex: 1 }}>
+            
+            <Grid item xs={4} style={{marginLeft: '230px'}}>
+              <Image
+                width={300}
+                style={{
+                  marginTop: "-30px", // Ajusta el margen superior aquí
+                  width: "300px",
+                  height: "300px",
+                  overflow: "hidden",
+                  boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                  borderRadius: "50%",
+                }}
+                src={DetallesTabla["mmaq_Imagen"]}
+              />
+            </Grid>
+            <Grid item xs={5} style={{marginTop: '-15px'}}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
                   <InputLabel htmlFor="id">
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Id:
+                      Id del modelo:
                     </Typography>
-                    <Typography>{id}</Typography>
+                    <Typography>{DetallesTabla["mmaq_Id"]}</Typography>
                   </InputLabel>
-                  <br></br>
+                </Grid>
+                <Grid item xs={12}>
                   <InputLabel htmlFor="descripcion">
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Nombre Maquina:
+                      Descripción del modelo:
                     </Typography>
-                    <Typography>{descripcion}</Typography>
+                    <Typography>{DetallesTabla["mmaq_Nombre"]}</Typography>
                   </InputLabel>
-                  <br></br>
-                  <InputLabel htmlFor="descripcion">
+                </Grid>
+                <Grid item xs={12}>
+                  <InputLabel htmlFor="marca">
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Marca Maquina:
+                      Marca:
                     </Typography>
-                    <Typography>{marca}</Typography>
+                    <Typography>{DetallesTabla["marcaMaquina"]}</Typography>
                   </InputLabel>
-                  <br></br>
-                  <InputLabel htmlFor="descripcion">
+                </Grid>
+                <Grid item xs={12}>
+                  <InputLabel htmlFor="funcion">
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
-                      Función Maquina:
+                      Funciones:
                     </Typography>
-                    <Typography>{funcion}</Typography>
+                    <Typography>{DetallesTabla["funcionMaquina"]}</Typography>
                   </InputLabel>
-                </Box>
-              </Box>
+                </Grid>
+              </Grid>
             </Grid>
-            <br></br>
+
+
             <Grid item xs={12}>
               <table
                 id="detallesTabla"
@@ -825,25 +904,33 @@ function ModelosMaquinaIndex() {
                       <Icon style={iconStyle}>person</Icon>Usuario
                     </th>
                     <th style={tableHeaderStyle}>
-                      <Icon style={iconStyle}>date_range</Icon>Fecha y
-                      hora
+                      <Icon style={iconStyle}>date_range</Icon>Fecha y hora
                     </th>
                   </tr>
                 </thead>
+
                 <tbody>
                   <tr style={tableRowStyle}>
                     <td style={tableCellStyle}>
                       <strong>Creación</strong>
                     </td>
-                    <td style={tableCellStyle}>Usuario Creación</td>
-                    <td style={tableCellStyle}>00/00/0000</td>
+                    <td style={tableCellStyle}>{DetallesTabla['usuarioCreacionNombre']}</td>
+                    <td style={tableCellStyle}>
+                      {DetallesTabla['mmaq_FechaCreacion']
+                        ? new Date(DetallesTabla['mmaq_FechaCreacion']).toLocaleString()
+                        : ""}
+                    </td>
                   </tr>
                   <tr style={tableRowStyle}>
                     <td style={tableCellStyle}>
                       <strong>Modificación</strong>
                     </td>
-                    <td style={tableCellStyle}>Usuario Modificación</td>
-                    <td style={tableCellStyle}>00/00/0000</td>
+                    <td style={tableCellStyle}>{DetallesTabla['usuarioModificacionNombre']}</td>
+                    <td style={tableCellStyle}>
+                      {DetallesTabla['mmaq_FechaModificacion']
+                        ? new Date(DetallesTabla['mmaq_FechaModificacion']).toLocaleString()
+                        : ""}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -853,9 +940,10 @@ function ModelosMaquinaIndex() {
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarCollapseDetalles}
-                  startIcon={<Icon>arrow_back</Icon>}
-                >
+                  onClick={() => {
+                    setmostrarIndex(!mostrarIndex);
+                    setmostrarDetalles(!mostrarDetalles);
+                  }}                >
                   Regresar
                 </Button>
               </div>
@@ -863,11 +951,244 @@ function ModelosMaquinaIndex() {
           </Grid>
         </CardContent>
       </Collapse>
-      {/* Collapse para mostrar los detalles de un registro fin*/}
+
+      {/* Collapse para el formulario de editar un registro incio*/}
+      <form onSubmit={handleSubmitEditar((_dataEditar) => { })}>
+        <Collapse in={mostrarEditar}>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={"Editar Modelo de Máquina"}
+                  />
+                </Divider>
+              </Grid>
+              <Grid
+                item
+                xs={4}
+                style={{
+                  marginTop: "30px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <div className="little-profilePhynomo text-center">
+                  <div
+                    className="pro-img"
+                    style={{
+                      marginTop: "0",
+                      width: "300px",
+                      height: "300px",
+                      overflow: "hidden",
+                      boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                      borderRadius: '50%'
+                    }}
+                  >{image == null ? (
+                    <img
+                      src="https://i.ibb.co/RTnx082/kisspng-computer-icons-user-clip-art-user-5abf13db298934-2968784715224718991702.jpg"
+                      alt="maqui"
+                    />
+                  ) : (
+                    <Image
+                      width={300}
+                      style={{
+                        marginTop: "0",
+                        width: "400px",
+                        height: "300px",
+                        overflow: "hidden",
+                        boxShadow: "0 0 10px rgba(0, 0, 0, 0.3)",
+                        borderRadius: '50%'
+                      }}
+                      src={image}
+                    />
+                  )}
+                  </div>
+                  <br />
+                  <Button
+                    startIcon={<Icon>image</Icon>}
+                    variant="contained"
+                    color="primary"
+                    style={{
+                      borderRadius: "10px",
+                      marginRight: "10px",
+                    }}
+                    sx={{
+                      backgroundColor: "#634A9E",
+                      color: "white",
+                      "&:hover": { backgroundColor: "#6e52ae" },
+                    }}
+                    onClick={() => fileInputRef.current.click()}
+                  >
+                    Seleccionar imagen
+                  </Button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    onChange={handleImageChange}
+                  />
+                </div>
+              </Grid>
+
+              <Grid item xs={8} style={{ marginTop: "60px" }}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    {/* Etiqueta "Nuevo Usuario" */}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      {/* Contenido de la etiqueta, si es necesario */}
+                    </div>
+                  </Grid>
+
+                  {/* Left column for TextFields */}
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <FormLabel error={!!errorsEditar.mmaq_NombreEditar} id="group-label">
+                        Nombre del modelo:
+                      </FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            id="outlined"
+                            placeholder="Ingrese el nombre del modelo"
+                            inputProps={{
+                              maxLength: 150,
+                            }}
+                            error={!!errorsEditar.mmaq_NombreEditar}
+                          />
+                        )}
+                        name="mmaq_NombreEditar"
+                        control={controlEditar}
+                      />
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <FormLabel error={!!errorsEditar.marq_IdEditar}>Marca</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="marq_IdEditar"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={MarcasDDL}
+                            value={datosWatchEditar.marq_IdEditar ?? null}
+                            onChange={(event, value) => {
+                              setValueEditar("marq_IdEditar", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errorsEditar.marq_IdEditar} />
+                            )}
+                          />
+                        )}
+                        name="marq_IdEditar"
+                        error={!!errorsEditar.marq_IdEditar}
+                        control={controlEditar}
+                      />
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <FormControl fullWidth>
+                      <FormLabel error={!!errorsEditar.func_IdEditar}>Función:</FormLabel>
+                      <Controller
+                        render={({ field }) => (
+                          <Autocomplete
+                            {...field}
+                            id="func_IdEditar"
+                            isOptionEqualToValue={(option, value) =>
+                              option.value === value?.value
+                            }
+                            options={FuncionesDDL}
+                            value={datosWatchEditar.func_IdEditar ?? null}
+                            onChange={(event, value) => {
+                              setValueEditar("func_IdEditar", value);
+                            }}
+                            renderInput={(params) => (
+                              <TextField {...params} error={!!errorsEditar.func_IdEditar} />
+                            )}
+                          />
+                        )}
+                        name="func_IdEditar"
+                        error={!!errorsEditar.func_IdEditar}
+                        control={controlEditar}
+                      />
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </Grid>
+              <Grid
+                item
+                xs={12}
+                sx={{
+                  display: "flex",
+                  justifyContent: "right",
+                  alignItems: "right",
+                }}
+              >
+                <Button
+                  startIcon={<Icon>check</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{
+                    borderRadius: "10px",
+                    marginRight: "10px",
+                  }}
+                  sx={{
+                    backgroundColor: "#634A9E",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#6e52ae" },
+                  }}
+                  onClick={EditarModeloMaquina}
+                  type="submit"
+
+                >
+                  Guardar
+                </Button>
+
+                <Button
+                  startIcon={<Icon>close</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px" }}
+                  sx={{
+                    backgroundColor: "#DAD8D8",
+                    color: "black",
+                    "&:hover": { backgroundColor: "#BFBABA" },
+                  }}
+                  onClick={VisibilidadTablaEditar}
+                >
+                  Cancelar
+                </Button>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Collapse>
+      </form>
+      {/* Collapse para el formulario de editar un registro Fin*/}
+
 
       <Dialog
         open={Eliminar}
-        fullWidth="md"
+        fullWidth={true}
         onClose={DialogEliminar}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
@@ -881,17 +1202,26 @@ function ModelosMaquinaIndex() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
+          <Grid
+            item
+            xs={12}
+            sx={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "right",
+            }}
+          >
             <Button
               startIcon={<Icon>checked</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px', marginRight: '10px' }}
+              style={{ borderRadius: "10px", marginRight: "10px" }}
               sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={DialogEliminar}
+              onClick={EliminarModelosMaquina}
             >
               Eliminar
             </Button>
@@ -900,26 +1230,24 @@ function ModelosMaquinaIndex() {
               startIcon={<Icon>close</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px' }}
+              style={{ borderRadius: "10px" }}
               sx={{
-                backgroundColor: '#DAD8D8', color: 'black',
-                "&:hover": { backgroundColor: '#BFBABA' },
+                backgroundColor: "#DAD8D8",
+                color: "black",
+                "&:hover": { backgroundColor: "#BFBABA" },
               }}
-              onClick={DialogEliminar}
+              onClick={VisibilidadTabla}
             >
               Cancelar
             </Button>
           </Grid>
         </DialogActions>
       </Dialog>
-      <ToastContainer />
-    </Card>
 
+
+
+    </Card>
   );
 }
 
-export default ModelosMaquinaIndex;
-
-
-
-
+export default ModelosMaquinas;

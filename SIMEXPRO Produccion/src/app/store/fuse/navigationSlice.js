@@ -6,7 +6,7 @@ import _ from '@lodash';
 
 const navigationAdapter = createEntityAdapter();
 const emptyInitialState = navigationAdapter.getInitialState();
-const initialState = navigationAdapter.upsertMany(emptyInitialState, navigationConfig);
+const initialState = navigationAdapter.upsertMany(emptyInitialState, navigationConfig());
 
 export const appendNavigationItem = (item, parentId) => (dispatch, getState) => {
   const navigation = selectNavigationAll(getState());

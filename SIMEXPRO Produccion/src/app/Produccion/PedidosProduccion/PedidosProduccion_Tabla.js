@@ -48,10 +48,14 @@ import MUIDataTable from 'mui-datatables'
 import { DownOutlined } from '@ant-design/icons';
 import { Badge, Dropdown, Space, Table } from 'antd';
 import { keyBy } from 'lodash';
+import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
 import "src/styles/custom-pagination.css";
 
 function PedidosProduccion_Tabla() {
     const navigate = useNavigate();
+    const [detallespedidos, setdetallespedidos] = useState([])
+    const [mostrarDetalles, setmostrarDetalles] = useState(false);
 
     const [users, setUsers] = useState([])
     const [searchText, setSearchText] = useState('');
@@ -63,10 +67,69 @@ function PedidosProduccion_Tabla() {
     const [id, setid] = useState('');
     const [DataTabla, setDataTabla] = useState([])
     const [repoorte, setreporte] = useState('');
+    const [empleado, setempleado] = useState("");
+    const [fecha, setfecha] = useState("");
+    const [estado, setestado] = useState("");
+    const [observaciones, setobservaciones] = useState("");
 
     const DialogEliminar = () => {
         setEliminar(!Eliminar);
     };
+
+
+    //Campos de Auditoria
+    const [UsuarioCreacion, setUsuarioCreacion] = useState("");
+    const [UsuarioModificador, setUsuarioModificador] = useState("");
+    const [FechaCreacion, setFechaCreacion] = useState();
+    const [FechaModificacion, setModificacion] = useState();
+    const FechaCreacionForm = new Date(FechaCreacion).toLocaleString();
+
+
+    //Constante abrir el collapse de los detalles de la pantalla
+    const handleDetails = (ppro_Id) => {
+        DetallesTabla(ppro_Id);
+        MostrarCollapseDetalles();
+        handleClose(ppro_Id);
+    };
+    //Constante para mostrar el collapse de detalles un registro
+    const MostrarCollapseDetalles = () => {
+        setmostrarIndex(!mostrarIndex);
+        setmostrarDetalles(!mostrarDetalles);
+    };
+
+    //Constante para cerrar el collapse de detalles
+    const CerrarCollapseDetalles = () => {
+        setmostrarIndex(!mostrarIndex);
+        setmostrarDetalles(!mostrarDetalles);
+    }
+    //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
+    const iconStyle = {
+        marginRight: "5px",
+        verticalAlign: "middle",
+        color: "#634a9e",
+    };
+    //Constante para los estilos de los headers de la tabla de detalles
+    const tableHeaderStyle = {
+        verticalAlign: "middle",
+        padding: "15px",
+        textAlign: "left",
+        borderBottom: "1px solid #ddd",
+        backgroundColor: "#f2f2f2",
+    };
+    //Constante para los estilos de los filas de la tabla de detalles
+    const tableRowStyle = {
+        "&:hover": {
+            backgroundColor: "coral",
+        },
+    };
+    //Constante para los estilos de los celdas de la tabla de detalles
+    const tableCellStyle = {
+        verticalAlign: "middle",
+        padding: "15px",
+        textAlign: "left",
+        borderBottom: "1px solid #ddd",
+    };
+
 
     const handleClose = (id) => {
         setAnchorEl(prevState => ({
@@ -87,15 +150,6 @@ function PedidosProduccion_Tabla() {
     };
 
 
-    const handleDetails = (id) => {
-        // Lógica para manejar la visualización de detalles de la fila con el ID proporcionado
-        handleClose(id);
-    };
-
-    const handleDelete = (id) => {
-        DialogEliminar();
-        handleClose(id);
-    };
 
     useEffect(() => {
         TablaPedidosProduccion()
@@ -128,7 +182,7 @@ function PedidosProduccion_Tabla() {
                         }
                     })
                 }
-
+                console.log(detalles)
 
 
 
@@ -140,7 +194,12 @@ function PedidosProduccion_Tabla() {
                     ppro_Fecha: item.ppro_Fecha,
                     ppro_Estados: item.ppro_Estados,
                     ppro_Observaciones: item.ppro_Observaciones,
-                    detalles: detalles
+                    detalles: detalles,
+                    UsuarioCreacion: item.usuCreacion,
+                    UsuarioModificador: item.usuModificacion,
+                    FechaCreacion: item.ppro_FechaCreacion,
+                    FechaModificacion: item.ppro_FechaModificacion
+
                 }
             });
             console.log(rows)
@@ -150,6 +209,24 @@ function PedidosProduccion_Tabla() {
 
         }
     };
+
+
+    //Constante para el detalle de las pantallas
+    const DetallesTabla = (ppro_Id) => {
+        const Detalles = DataTabla.find((registro) => registro.ppro_Id === ppro_Id);
+
+        setid(Detalles.ppro_Id);
+        setempleado(Detalles.empl_NombreCompleto);
+        setfecha(Detalles.ppro_Fecha);
+        setestado(Detalles.ppro_Estados);
+        setobservaciones(Detalles.ppro_Observaciones);
+        setUsuarioCreacion(Detalles.UsuarioCreacion);
+        setUsuarioModificador(Detalles.UsuarioModificador);
+        setFechaCreacion(Detalles.FechaCreacion);
+        setModificacion(Detalles.FechaModificacion);
+        setdetallespedidos(Detalles.detalles);
+    };
+
 
 
     const [anchorEl, setAnchorEl] = useState({});
@@ -212,9 +289,6 @@ function PedidosProduccion_Tabla() {
                             </MenuItem>
                             <MenuItem onClick={() => handleDetails(params.ppro_Id)}>
                                 <Icon>visibility</Icon> ㅤDetalles
-                            </MenuItem>
-                            <MenuItem onClick={() => handleDelete(params.ppro_Id)}>
-                                <Icon>delete</Icon> ㅤEliminar
                             </MenuItem>
                         </Menu>
                     </Stack>
@@ -407,6 +481,174 @@ function PedidosProduccion_Tabla() {
                 </div>
             </Collapse>
 
+
+            {/* Collapse para mostrar los detalles de un registro inicio*/}
+            <Collapse in={mostrarDetalles}>
+                <CardContent
+                    sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                    }}
+                >
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} style={{ marginBottom: '30px' }}>
+                            <Divider style={{ marginTop: '0px', marginBottom: '10px' }}>
+                                <Chip label="DETALLES DE LOS PEDIDOS DE PRODUCCIÓN" />
+                            </Divider>
+                        </Grid>
+
+
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} md={6} style={{ marginBottom: '40px', display: 'flex', justifyContent: 'center' }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <Box sx={{ textAlign: 'center', marginBottom: '20px' }}>
+                                        <InputLabel htmlFor="id">
+                                            <Typography sx={{ fontWeight: 'bold', color: '#000000' }}>
+                                                Id del pedido:
+                                            </Typography>
+                                            <Typography>{id}</Typography>
+                                        </InputLabel>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <InputLabel htmlFor="descripcion">
+                                            <Typography sx={{ fontWeight: 'bold', color: '#000000' }}>
+                                                Empleado encargado:
+                                            </Typography>
+                                            <Typography>{empleado}</Typography>
+                                        </InputLabel>
+                                    </Box>
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12} md={6} style={{ marginBottom: '40px', display: 'flex', justifyContent: 'center' }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <Box sx={{ textAlign: 'center', marginBottom: '20px' }}>
+                                        <InputLabel htmlFor="id">
+                                            <Typography sx={{ fontWeight: 'bold', color: '#000000' }}>
+                                                Fecha:
+                                            </Typography>
+                                            <Typography>{fecha}</Typography>
+                                        </InputLabel>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <InputLabel htmlFor="descripcion">
+                                            <Typography sx={{ fontWeight: 'bold', color: '#000000' }}>
+                                                Estado:
+                                            </Typography>
+                                            <Typography>{estado}</Typography>
+                                        </InputLabel>
+                                    </Box>
+                                </Box>
+                            </Grid>
+                            <Grid item xs={12} style={{ marginBottom: '40px', display: 'flex', justifyContent: 'center' }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <Box sx={{ textAlign: 'center', marginBottom: '20px' }}>
+                                        <InputLabel htmlFor="id">
+                                            <Typography sx={{ fontWeight: 'bold', color: '#000000' }}>
+                                                Observaciones:
+                                            </Typography>
+                                            <Typography>{observaciones}</Typography>
+                                        </InputLabel>
+                                    </Box>
+                                </Box>
+                            </Grid>
+                        </Grid>
+
+
+                        <Grid container justifyContent="center" style={{ marginBottom: '25px', marginLeft: '30px', marginBottom: '40px' }}>
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <Box sx={{ flex: 1 }}>
+                                        <InputLabel htmlFor="pantallas">
+                                            <Divider style={{ marginTop: '0px', marginBottom: '10px', borderColor: '#aa8caf' }}>
+                                                <Chip color='default' variant='outlined' label="Materiales asignados" />
+                                            </Divider>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+                                                {detallespedidos ? (
+                                                    detallespedidos.map((materiales, index) => (
+                                                        <div key={index} style={{ textAlign: 'center', margin: '0 30px' }}>
+                                                            {materiales.mate_Descripcion}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <Grid
+                                                        item
+                                                        xs={12}
+                                                        style={{
+                                                            marginBottom: '30px',
+                                                            display: 'flex',
+                                                            justifyContent: 'center',
+                                                            alignItems: 'center'
+                                                        }}
+                                                    >
+                                                        <Typography variant="subtitle1" align="center">
+                                                            No se han asignado materiales hasta el momento.
+                                                        </Typography>
+                                                    </Grid>
+                                                )}
+                                            </div>
+                                        </InputLabel>
+                                    </Box>
+                                </Box>
+                            </Grid>
+                        </Grid>
+
+
+                        <Grid item xs={12}>
+                            <table
+                                id="detallesTabla"
+                                style={{ width: "100%", borderCollapse: "collapse" }}
+                            >
+                                <thead>
+                                    <tr>
+                                        <th style={tableHeaderStyle}>
+                                            <Icon style={iconStyle}>edit</Icon>Accion
+                                        </th>
+                                        <th style={tableHeaderStyle}>
+                                            <Icon style={iconStyle}>person</Icon>Usuario
+                                        </th>
+                                        <th style={tableHeaderStyle}>
+                                            <Icon style={iconStyle}>date_range</Icon>Fecha y hora
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style={tableRowStyle}>
+                                        <td style={tableCellStyle}>
+                                            <strong>Creación</strong>
+                                        </td>
+                                        <td style={tableCellStyle}>{UsuarioCreacion}</td>
+                                        <td style={tableCellStyle}>{FechaCreacionForm}</td>
+                                    </tr>
+                                    <tr style={tableRowStyle}>
+                                        <td style={tableCellStyle}>
+                                            <strong>Modificación</strong>
+                                        </td>
+                                        <td style={tableCellStyle}>{UsuarioModificador}</td>
+                                        <td style={tableCellStyle}>
+                                            {FechaModificacion
+                                                ? new Date(FechaModificacion).toLocaleString()
+                                                : ""}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </Grid>
+                        <br></br>
+                        <Grid item xs={12}>
+                            <div className="card-footer">
+                                <Button
+                                    variant="contained"
+                                    onClick={CerrarCollapseDetalles}
+                                    startIcon={<Icon>arrow_back</Icon>}
+                                >
+                                    Regresar
+                                </Button>
+                            </div>
+                        </Grid>
+                    </Grid>
+                </CardContent>
+            </Collapse>
 
             <Dialog
                 open={Eliminar}

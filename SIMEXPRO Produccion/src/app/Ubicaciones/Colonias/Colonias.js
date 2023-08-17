@@ -15,10 +15,11 @@ import {
   Avatar,
   Box,
   FormLabel,
-  Autocomplete
+  Autocomplete,
+  Divider,
+  Chip
 } from "@mui/material";
 import React, { useEffect } from 'react'
-import axios from 'axios';
 import Stack from '@mui/material/Stack';
 import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
 import { useState } from 'react';
@@ -34,9 +35,8 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 
 import * as yup from 'yup';
-import { useForm, Controller } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import Swal from 'sweetalert2';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -47,6 +47,20 @@ import { keyBy } from 'lodash';
 
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ColoniasServices from './ColoniasService';
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+//Import ddls
+import load_DDLs from "src/app/loadDDLs/Load_DDL";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+
 
 
 function ColoniasIndex() {
@@ -56,167 +70,79 @@ function ColoniasIndex() {
   const [mostrarEditar, setmostrarEditar] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
   const [Eliminar, setEliminar] = useState(false);
-  const [id, setId] = useState("");
-  const [CiudadDDL, setCiudadDDL] = useState([]);
-  const [ciudad, setCiudad] = useState("");
-  const [AldeaDDL, setAldeaDDL] = useState([]);
-  const [aldea, setAldea] = useState("");
-  const [colonia, setColonia] = useState("");
-  //Constante para asignar los valores a la tabla y mapear
-  const[DataTabla, setDataTabla] = useState([])
 
-  const [usuariocrea, setusuariocrea] = useState("");
-  const [fechacrea, setfechacrea] = useState("");
-  const [usuariomodifica, setusuariomodifica] = useState("");
-  const [fechamodifica, setfechamodifica] = useState("");
-  const [ciudadid, setciudadid] = useState(0);
-  const [aldeaid, setaldeaid] = useState(0);
-  const [ciudadselec, setciudadselec] = useState("");
-  const [aldeaselec, setaldeaselec] = useState("");
+  //Constante para asignar los valores a la tabla y mapear
+  const [DataTabla, setDataTabla] = useState([])
+
+  //DDLS
   const [ProvinciaDDL, setProvinciaDDL] = useState([]);
-  const [provincia, setProvincia] = useState("");
   const [PaisDDL, setPaisDDL] = useState([]);
-  const [pais, setPais] = useState("");
+  const [CiudadDDL, setCiudadDDL] = useState([]);
+
+  //Variable que indica si el usuario a seleccionar crear o editar
+  const [editar, setEditar] = useState(false);
+
+  //Variable que guarda los datos de detalles
+  const [DatosDetalles, setDatosDetalles] = useState({});
+
+  //Cargado de las variables DDL
+  async function ddls() {
+    setPaisDDL(await load_DDLs.paises());
+  }
+  async function ddlProvincia(id) {
+    try{
+      setProvinciaDDL(await load_DDLs.ProvinciasPorPais(id));
+    }
+    catch(error){
+      console.log(error)
+    }
+  }
+  async function ddlCiudades(id) {
+    try{
+      setCiudadDDL(await load_DDLs.CiudadesPorProvincia(id));
+    }
+    catch(error){
+      console.log(error)
+    }
+  }
 
   //Hook UseEffect para que cargue los datos de un solo cuando inicice la pantalla
   useEffect(() => {
-    CargarDatosTabla()
-    CargarDatosDdl();
+    coloniasGetData();
+    ddls();
   }, []);
 
-  //Constante para cargar los datos de los Dddl
-  const CargarDatosDdl = async () => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    const responseDdl2 = await axios.get(process.env.REACT_APP_API_URL+'api/Paises/Listar', {
-      headers: customHeaders,
-    });
-      setPaisDDL(
-        responseDdl2.data.map(item => ({
-          pais_Id: item.pais_Id,
-          pais: item.pais_Codigo + ' - ' + item.pais_Nombre,
-        }))
-      )
-  }
-
-  const CargarProvinciaDDL = async (id) => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    try {
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Provincias/Listar', { headers: customHeaders });
-  
-      const filteredProvincias = response.data.data.filter(item => item.pais_Id === id);
-      const provinciaOptions = filteredProvincias.map(item => ({ pvin_Id: item.pvin_Id, provincia: item.pvin_Nombre }));
-  
-      setProvinciaDDL(provinciaOptions);
-      
-    } catch (error) {
-      console.error("Error cargando provincias:", error);
-    }
-        
-  }
-
-  const CargarCiudadDDL = async (id) => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    try {
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Ciudades/Listar', { headers: customHeaders });
-  
-      const filteredCiudades = response.data.data.filter(item => item.pvin_Id === id);
-      const ciudadOptions = filteredCiudades.map(item => ({ ciud_Id: item.ciud_Id, ciudad: item.ciud_Nombre }));
-  
-      setCiudadDDL(ciudadOptions);
-      
-    } catch (error) {
-      console.error("Error cargando ciudades:", error);
-    }
-        
-  }
-
-  const CargarAldeaDDL = async (id) => {
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    try {
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Aldea/Listar', { headers: customHeaders });
-  
-      const filteredAldeas = response.data.data.filter(item => item.ciud_Id === id);
-      const aldeaOptions = filteredAldeas.map(item => ({ alde_Id: item.alde_Id, aldea: item.alde_Nombre }));
-  
-      setAldeaDDL(aldeaOptions);
-      
-    } catch (error) {
-      console.error("Error cargando aldeas:", error);
-    }
-        
-  }
-
-  //Constante para cargar datos a las tablas
-  const CargarDatosTabla = async () => {
-    try {
-    const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      const response = await axios.get(process.env.REACT_APP_API_URL+'api/Colonias/Listar', {
-        headers: customHeaders,
-      }); 
-      console.log(response)
-      const rows = response.data.data.map((item,index) => {
-        return {
-          key:index,
-          id: item.colo_Id,
-          colonia: item.colo_Nombre,
-          aldea: item.alde_Nombre,
-          aldeaid: item.alde_Id,
-          ciudad: item.ciud_Nombre,
-          ciudadid: item.ciud_Id,
-          usuariocrea: item.usuarioCreacionNombre,
-          usuariomodifica: item.usuarioModificacionNombre,
-          fechacrea: item.colo_FechaCreacion,
-          fechamodifica: item.colo_FechaModificacion,
-        }
-      });
-      setDataTabla(rows);
-    } catch (error) {
-    }
+  const defaultColoniasValues = {
+    id: "",
+    pais: null,
+    provincia: null,
+    ciudad: null,
+    colonia: "",
   };
 
-  const ToastError = () => {
-    toast.error('Datos no ingresados correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
 
-  const ToastExito = () => {
-    toast.success('Datos ingresados correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
+  const schema = yup.object().shape({
+    id: yup.string(),
+    ciudad: yup.object().required(""),
+    colonia: yup.string().trim().required(""),
+    provincia: yup.object().required(""),
+    pais: yup.object().required(""),
+  })
 
-  const DetallesTabla = (id) => {
-    const Detalles = DataTabla.find(registro => registro.id === id);
-    setId(Detalles.id);
-    setCiudad(Detalles.ciudad);
-    setAldea(Detalles.aldea);
-    setColonia(Detalles.colonia);
-    setusuariocrea(Detalles.usuariocrea);
-    setusuariomodifica(Detalles.usuariomodifica);
-    setfechacrea(Detalles.fechacrea);
-    setfechamodifica(Detalles.fechamodifica);
-  };
+
+  const { handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
+    defaultColoniasValues,
+    mode: 'all',
+    resolver: yupResolver(schema),
+  });
+
+  //Validacion de campos vacios y errores
+  const { isValid, dirtyFields, errors } = formState;
+  
+
+  //Datos del formulario
+  const datosWatch = watch();
+
 
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
@@ -224,7 +150,7 @@ function ColoniasIndex() {
 
   const [anchorEl, setAnchorEl] = useState({});
 
-  const handleClick   = (event, id) => {
+  const handleClick = (event, id) => {
     setAnchorEl(prevState => ({
       ...prevState,
       [id]: event.currentTarget,
@@ -238,70 +164,48 @@ function ColoniasIndex() {
     }));
   };
 
-  const handleEdit = (id) => {
-    const Editar = DataTabla.find(registro => registro.id === id);
-    setCiudad(Editar.ciudad);
-    setciudadid(Editar.ciudadid);
-    setAldea(Editar.aldea);
-    setaldeaid(Editar.aldeaid);
-    setColonia(Editar.colonia);
-    setId(Editar.id);
-    setValue("coloniaEditar", Editar.colonia); 
-    setColonia(colonia);
-
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    axios
-        .get(process.env.REACT_APP_API_URL+'api/Ciudades/Listar', {headers: customHeaders}) 
-        .then(response => response.data)
-        .then(data => {
-          setCiudadDDL(data.data.map(item => ({ ciud_Id: item.ciud_Id, ciudad: item.ciud_Nombre })))
-          const ciudadPreseleccionada = data.data.find(d => d.ciud_Id === ciudadid)
-          console.log(ciudadPreseleccionada);
-          setciudadselec(ciudadPreseleccionada.ciud_Id)
-        })
-        .catch(error => console.error(error))
-    axios
-        .get(process.env.REACT_APP_API_URL+'api/Aldea/Listar', {headers: customHeaders}) 
-        .then(response => response.data)
-        .then(data => {
-          setAldeaDDL(data.data.map(item => ({ alde_Id: item.alde_Id, aldea: item.alde_Nombre})))
-          const aldeaPreseleccionada = data.data.find(d => d.alde_Id === aldeaid)
-          console.log(aldeaPreseleccionada);
-          setaldeaselec(aldeaPreseleccionada.alde_Id)
-        })
-        .catch(error => console.error(error))
-    MostrarCollapseEditar();
-    handleClose(id);
+  const handleEdit = async (datos) => {
+    handleClose(datos.colo_Id);
+    MostrarCollapseEditar()
+    setEditar(true);
+    //insertar aca las variables necesarias en su formulario
+    setValue("id", datos.colo_Id);
+    setValue("colonia", datos["colo_Nombre"]);
+    setValue('pais', { value: datos["pais_Id"], label: datos["pais_Codigo"] + ' - ' + datos["pais_Nombre"] })
+    ddlProvincia(datos["pais_Id"])
+    setValue('provincia', { value: datos["pvin_Id"], label: datos["pvin_Nombre"] })
+    ddlCiudades(datos["pvin_Id"])
+    setValue('ciudad', { value: datos["ciud_Id"], label: datos["ciud_Nombre"] })
+    
   };
 
-  const handleDetails = (id) => {
-    DetallesTabla(id);
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos);
+    console.log(datos);
     MostrarCollapseDetalles();
-    handleClose(id);
+    handleClose(datos.colo_Id);
   };
 
-   //Constante para mostrar el collapse de agregar un registro
-   const MostrarCollapseAgregar = () => {
+  //Constante para mostrar el collapse de agregar un registro
+  const MostrarCollapseAgregar = () => {
     setmostrarIndex(!mostrarIndex);
     setmostrarAgregar(!mostrarAgregar);
-    reset(defaultColoniasValues);
-    CargarDatosDdl()
+    //reset(defaultColoniasValues);
+
   };
-    //Constante para mostrar el collapse de editar un registro
-    const MostrarCollapseEditar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarEditar(!mostrarEditar);
-      reset(defaultColoniasValues);
-      CargarDatosDdl()
-    };
-  
-    //Constante para mostrar el collapse de detalles un registro
-    const MostrarCollapseDetalles = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarDetalles(!mostrarDetalles);
-    };
+  //Constante para mostrar el collapse de editar un registro
+  const MostrarCollapseEditar = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarEditar(!mostrarEditar);
+    reset(defaultColoniasValues);
+
+  };
+
+  //Constante para mostrar el collapse de detalles un registro
+  const MostrarCollapseDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+  };
 
   const handleDelete = (id) => {
     // Lógica para manejar la eliminación de la fila con el ID proporcionado
@@ -318,38 +222,33 @@ function ColoniasIndex() {
   {/* Columnas de la tabla */ }
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
+      title: '#',
+      dataIndex: 'key',
+      key: 'key',
+      sorter: (a, b) => a.key - b.key
     },
     {
       title: 'Ciudad',
-      dataIndex: 'ciudad',
-      key: 'ciudad',
-      sorter: (a, b) => a.ciudad.localeCompare(b.ciudad),
-    },
-    {
-      title: 'Aldea',
-      dataIndex: 'aldea',
-      key: 'aldea',
-      sorter: (a, b) => a.aldea.localeCompare(b.aldea),
+      dataIndex: 'ciud_Nombre',
+      key: 'ciud_Nombre',
+      sorter: (a, b) => a.ciud_Nombre.localeCompare(b.ciud_Nombre),
     },
     {
       title: 'Colonia',
-      dataIndex: 'colonia',
-      key: 'colonia',
-      sorter: (a, b) => a.colonia.localeCompare(b.colonia),
+      dataIndex: 'colo_Nombre',
+      key: 'colo_Nombre',
+      sorter: (a, b) => a.colo_Nombre.localeCompare(b.colo_Nombre),
     },
     {
       title: 'Acciones',
       key: 'operation',
       render: (params) =>
-        <div key={params.id}>
+        <div key={params.colo_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
-              aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              aria-controls={`menu-${params.colo_Id}`}
+              aria-haspopup
+              onClick={(e) => handleClick(e, params.colo_Id)}
               variant="contained"
               style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
               startIcon={<Icon>menu</Icon>}
@@ -357,16 +256,16 @@ function ColoniasIndex() {
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.colo_Id}`}
+              anchorEl={anchorEl[params.colo_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.colo_Id])}
+              onClose={() => handleClose(params.colo_Id)}
             >
-              <MenuItem onClick={() => handleEdit(params.id)}>
+              <MenuItem onClick={() => handleEdit(params)}>
                 <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id)}>
+              <MenuItem onClick={() => handleDetails(params)}>
                 <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
             </Menu>
@@ -376,24 +275,22 @@ function ColoniasIndex() {
     },
   ];
 
-    //Constante para ejecutar las validaciones y el envio del formulario en el boton de editar en el collapse de editar
-    const EditarRegistro = () => {
-      const formData = watch();
-      formData.ciudad = ciudad;
-      formData.aldea = aldea;
-      formData.colonia = colonia;
-      ValidacionesEditar(formData);
-        reset(defaultColoniasValues);
-        CargarDatosDdl()
-        handleSubmit(ValidacionesEditar)();
-    };
-  
-      //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
+  //Peticion para cargar datos de la tabla
+  const coloniasGetData = async () => {
+    try {
+      setDataTabla(await ColoniasServices.listar());
+    } catch (error) {
+      ToastError('Error inesperado')
+    }
+  };
+
+
+  //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
   const CerrarEditar = () => {
     setmostrarIndex(!mostrarIndex);
     setmostrarEditar(!mostrarEditar);
     reset(defaultColoniasValues);
-    CargarDatosDdl()
+
   };
 
   //Constante para cerrar el collapse de detalles
@@ -402,168 +299,57 @@ function ColoniasIndex() {
     setmostrarDetalles(!mostrarDetalles);
   };
 
-    //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-    const iconStyle = {
-      marginRight: "5px",
-      verticalAlign: "middle",
-      color: "#634a9e",
-    };
-
-     //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
-
-  const defaultColoniasValues = {
-    ciudad: 0,
-    aldea: 0,
-    provincia: 0,
-    pais: 0,
-    colonia: '',
-
-  }
-
-  const ColoniasSchema = yup.object().shape({
-    ciudad: yup.string().required(),
-    aldea: yup.string().required(),
-    colonia: yup.string().required(),
-    provincia: yup.string().required(),
-    pais: yup.string().required(),
-  })
-
-  const[data, setData] = useState([])
 
   
-  const {handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
-    defaultColoniasValues,
-    mode: 'all',
-    resolver: yupResolver(ColoniasSchema),
-  });
 
-  const { isValid, dirtyFields, errors } = formState;
-
-  const ColoniasValidar = (nombreCuidad) => {
-    if (!nombreCuidad) {
-      return true;
-    }
-    else {
-      return false;
+  //Peticion para crear un registro
+  const coloniasCreate = async () => {
+    try {
+      const response = await ColoniasServices.crear(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        coloniasGetData();
+        VisibilidadTabla();
+        reset(defaultColoniasValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
     }
   };
 
-  const ValidacionAgregar = (data) => {
-    console.log(data);
-    // Acá se llaman todos los campos a validar
-    const ErroresArray = [
-      ColoniasValidar(data.colonia)
-    ]
-
-    // Se define la variable donde guardaremos los errores
-    let errors = 0;
-
-    // Se recorre el arreglo y se buscan los errores
-    for (let i = 0; i < ErroresArray.length; i++) {
-      if (ErroresArray[i] === true) {
-        errors++;
+  // Peticion para editar un registro
+  const coloniasEdit = async () => {
+    try {
+      const response = await ColoniasServices.editar(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha editado exitosamente");
+        coloniasGetData();
+        VisibilidadTablaEditar();
+        reset(defaultColoniasValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
       }
-    }
-
-    // Se utiliza la varibale de errores y se evalua en base a ella.
-    if (errors == 0) {
-
-      let values = {
-        colo_Nombre: data.colonia,
-        alde_Id: data.aldea,
-        ciud_Id: data.ciudad,
-        usua_UsuarioCreacion: 1,
-        colo_FechaCreacion: new Date()
-      }
-      const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      axios.post(process.env.REACT_APP_API_URL+'api/Colonias/Insertar',values,{
-        headers: customHeaders,
-      })
-      .then(response =>{
-        console.log(response, "respuesta")
-        if(response.data.data != null){
-          if (response.data.data.messageStatus === "1") {  
-            console.log("siuuuuu");       
-            ToastExito();
-            CargarDatosTabla();
-            VisibilidadTabla();     
-        }else {
-          if(response.data.data.messageStatus.includes("Violation of UNIQUE KEY constraint 'UQ_Gral_tbCargos__carg_Nombre'.")){
-            ToastInfoWarning();
-          }else{
-            
-          } 
-        }  
-        }else{
-          ToastErrorApi();
-        }
-      }).catch = (error) => {
-
-      }
-
-    }
-    else {
-      console.log(errors);
-      ToastError();
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
     }
   };
-
-  const datosWatch = watch();
-
-    //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-    const ValidacionesEditar = (data) => {
-      if (data.colonia != null) {
-        if (data.colonia.trim() === "") {
-          Toast.fire({
-            icon: "error",
-            title: "No se permiten campos vacios",
-          });
-        } else {
-          MostrarCollapseEditar();
-          Toast2.fire({
-            icon: "success",
-            title: "Datos guardados exitosamente",
-          });
-        }
-      } else {
-        Toast.fire({
-          icon: "error",
-          title: "No se permiten campos vacios",
-        });
-      }
-    };
-
 
   const GuardarColonia = () => {
-    const formData = watch();
-    ValidacionAgregar(formData); 
-    handleSubmit(ValidacionAgregar)(); 
-    reset(defaultColoniasValues);
-    CargarDatosDdl()
+    if (isValid) {
+      // Validacion de campos completos
+      if (!editar) {
+        // Validacion de la funcion a realizar
+        coloniasCreate();
+      } else {
+        coloniasEdit();
+      }
+    } else {
+      ToastWarning("Completa todos los campos");
+    }
 
   };
 
@@ -571,18 +357,45 @@ function ColoniasIndex() {
   const VisibilidadTabla = () => {
     setmostrarIndex(!mostrarIndex);
     setmostrarAgregar(!mostrarAgregar);
+    reset(defaultColoniasValues)
+  };
+
+  const VisibilidadTablaEditar = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarEditar(!mostrarEditar);
+    reset(defaultColoniasValues)
   };
 
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
-  {/* Filtrado de datos */ }
-  const filteredRows = DataTabla.filter((row) =>
-    Object.values(row).some((value) =>
-      typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
+  //Constantes de los campos que se utilizaran para filtrar datos (Ingresar los campos que pusieron en la tabla(Columns))
+  const camposToFilter = ["key", "colo_Nombre", "ciud_Nombre"];
+
+  //Constante que ayuda a filtrar el datatable
+  const filteredRows = DataTabla.filter((row) => {
+    if (searchText === "") {
+      return true; // Mostrar todas las filas si el buscador está vacío
+    }
+
+    for (const [key, value] of Object.entries(row)) {
+      if (camposToFilter.includes(key)) {
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
+        if (formattedValue.includes(formattedSearchText)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
 
   return (
     <Card sx={{ minWidth: 275, margin: '40px' }}>
@@ -607,7 +420,10 @@ function ColoniasIndex() {
                 backgroundColor: '#634A9E', color: 'white',
                 "&:hover": { backgroundColor: '#6e52ae' },
               }}
-              onClick={VisibilidadTabla}
+              onClick={() => {
+                MostrarCollapseAgregar();
+                setEditar(false);
+              }}
             >
               Nuevo
             </Button>
@@ -658,17 +474,22 @@ function ColoniasIndex() {
 
       {/* Tabla */}
       <Collapse in={mostrarIndex}>
-        <div className='center' style={{ width: '95%', margin: 'auto' }}>
-
+        <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
             columns={columns}
             dataSource={filteredRows}
             size="small"
-            pagination={{
-              pageSize: filas
-              , className: 'decoration-white'
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
             }}
-
+            pagination={{
+              pageSize: filas,
+              showSizeChanger: false,
+              className: "custom-pagination",
+            }}
           />
         </div>
       </Collapse>
@@ -677,155 +498,141 @@ function ColoniasIndex() {
 
 
       {/* Formulario Agregar */}
+      <form onSubmit={handleSubmit((_data) => console.log(_data))}>
       <Collapse in={mostrarAgregar}>
         <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Typography variant="h5" gutterBottom>
-              </Typography>
-            </Grid> 
+            <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar colonia" : "Agregar colonia"}
+                  />
+                </Divider>
+            </Grid>
 
             <Grid item xs={6} >
               <FormControl fullWidth>
-                <InputLabel id="pais">País</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.ciudad}
-                          style={{ borderRadius: '3px' }}
-                          label="País"
-                          defaultValue={" "}
-                          onChange={e => {
-                            const paisSeleccionado = e.target.value; 
-                            field.onChange(e);
-                            CargarProvinciaDDL(paisSeleccionado); 
-                          }}
-                        >
-                        {PaisDDL.map(pais => (
-                          <MenuItem key={pais.pais_Id} value={pais.pais_Id}>
-                            {pais.pais}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="pais"
-                    control={control}
+                <FormLabel error={!!errors.pais}>País</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="pais"
+                      options={PaisDDL}
+                      value={datosWatch["pais"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('pais', value)
+                          setValue('provincia', null)
+                          setValue('ciudad', null)
+                          ddlProvincia(value?.value)
+                          if (!value) { setValue('pvin_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.pais}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
                   />
+                  )}
+                  name="pais"
+                  control={control}
+                />
               </FormControl>
             </Grid>
 
             <Grid item xs={6} >
               <FormControl fullWidth>
-                <InputLabel id="provincia">Provincia</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.ciudad}
-                          style={{ borderRadius: '3px' }}
-                          label="Provincia"
-                          defaultValue={" "}
-                          onChange={e => {
-                            const provinciaSeleccionada = e.target.value; 
-                            field.onChange(e);
-                            CargarCiudadDDL(provinciaSeleccionada); 
-                          }}
-                        >
-                        {ProvinciaDDL.map(provincia => (
-                          <MenuItem key={provincia.pvin_Id} value={provincia.pvin_Id}>
-                            {provincia.provincia}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="provincia"
-                    control={control}
+                <FormLabel error={!!errors.provincia}>Provincia</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="provincia"
+                      options={ProvinciaDDL}
+                      disabled={datosWatch['pais'] != null ? false : true}
+                      value={datosWatch["provincia"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('provincia', value)
+                          setValue('ciudad', null)
+                          ddlCiudades(value?.value)
+                          if (!value) { setValue('ciud_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.provincia}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
                   />
+                  )}
+                  name="provincia"
+                  control={control}
+                />
               </FormControl>
             </Grid>
 
             <Grid item xs={6} >
               <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Ciudad</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.ciudad}
-                          style={{ borderRadius: '3px' }}
-                          label="Ciudades"
-                          defaultValue={" "}
-                          onChange={e => {
-                            const ciudadSeleccionada = e.target.value; 
-                            field.onChange(e);
-                            CargarAldeaDDL(ciudadSeleccionada); 
-                          }}
-                        >
-                        {CiudadDDL.map(ciudad => (
-                          <MenuItem key={ciudad.ciud_Id} value={ciudad.ciud_Id}>
-                            {ciudad.ciudad}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="ciudad"
-                    control={control}
+                <FormLabel error={!!errors.ciudad}>Ciudad</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="ciudad"
+                      options={CiudadDDL}
+                      disabled={datosWatch['provincia'] != null ? false : true}
+                      value={datosWatch["ciudad"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('ciudad', value)
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.ciudad}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
                   />
+                  )}
+                  name="ciudad"
+                  control={control}
+                />
               </FormControl>
             </Grid>
 
-            <Grid item xs={6} >
+
+            <Grid item xs={6}>
               <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Aldea</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.aldea}
-                          style={{ borderRadius: '3px' }}
-                          label="Aldeas"
-                          defaultValue={" "}
-                        >
-                          {AldeaDDL.map(aldea => (
-                          <MenuItem key={aldea.alde_Id} value={aldea.alde_Id}>
-                            {aldea.aldea}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="aldea"
-                    control={control}
-                  />
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-            <div className="mt-5 mb-16" style={{ width: '100%'}}>
+                <FormLabel error={!!errors.provincia}>Colonia</FormLabel>
                 <Controller
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      label="Colonia"
                       variant="outlined"
                       error={!!errors.colonia}
-                      placeholder='Ingrese el nombre de la Colonia'
                       fullWidth
-                      InputProps={{startAdornment: (<InputAdornment position="start"></InputAdornment>),}}
                     />
                   )}
                   name="colonia"
                   control={control}
                 />
-              </div>
-            </Grid>  
+              </FormControl>
+            </Grid>
 
             <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
               <Button
@@ -838,6 +645,7 @@ function ColoniasIndex() {
                   "&:hover": { backgroundColor: '#6e52ae' },
                 }}
                 onClick={GuardarColonia}
+                type='submit'
               >
                 Guardar
               </Button>
@@ -851,7 +659,7 @@ function ColoniasIndex() {
                   backgroundColor: '#DAD8D8', color: 'black',
                   "&:hover": { backgroundColor: '#BFBABA' },
                 }}
-                onClick={MostrarCollapseAgregar}
+                onClick={VisibilidadTabla}
               >
                 Cancelar
               </Button>
@@ -860,10 +668,12 @@ function ColoniasIndex() {
           </Grid>
         </CardContent>
       </Collapse>
+      </form>
+      {/* Formulario Agregar */}
 
 
       {/* Collapse para el formulario de editar un registro inicio*/}
-    <Collapse in={mostrarEditar}>
+      <Collapse in={mostrarEditar}>
         <CardContent
           sx={{
             display: "flex",
@@ -872,149 +682,137 @@ function ColoniasIndex() {
           }}
         >
           <Grid container spacing={3}>
-          <Grid item xs={12}> </Grid>
-
-          <Grid item xs={6} >
-              <FormControl fullWidth>
-                <InputLabel id="pais">País</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.ciudad}
-                          style={{ borderRadius: '3px' }}
-                          label="País"
-                          defaultValue={" "}
-                          onChange={e => {
-                            const paisSeleccionado = e.target.value; 
-                            field.onChange(e);
-                            CargarProvinciaDDL(paisSeleccionado); 
-                          }}
-                        >
-                        {PaisDDL.map(pais => (
-                          <MenuItem key={pais.pais_Id} value={pais.pais_Id}>
-                            {pais.pais}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="pais"
-                    control={control}
-                  />
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={6} >
-              <FormControl fullWidth>
-                <InputLabel id="provincia">Provincia</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.ciudad}
-                          style={{ borderRadius: '3px' }}
-                          label="Provincia"
-                          defaultValue={" "}
-                          onChange={e => {
-                            const provinciaSeleccionada = e.target.value; 
-                            field.onChange(e);
-                            CargarCiudadDDL(provinciaSeleccionada); 
-                          }}
-                        >
-                        {ProvinciaDDL.map(provincia => (
-                          <MenuItem key={provincia.pvin_Id} value={provincia.pvin_Id}>
-                            {provincia.provincia}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="provincia"
-                    control={control}
-                  />
-              </FormControl>
-            </Grid>
-
-          <Grid item xs={6} >
-              <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Ciudad</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.ciudad}
-                          style={{ borderRadius: '3px' }}
-                          label="Ciudades"
-                          defaultValue={ciudadselec}
-                          onChange={e => {
-                            setciudadselec(e.target.value)
-                          }}
-                        >
-                        {CiudadDDL.map(ciudad => (
-                          <MenuItem key={ciudad.ciud_Id} value={ciudad.ciud_Id}>
-                            {ciudad.ciudad}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="ciudad"
-                    control={control}
-                  />
-              </FormControl>
-            </Grid>
-            <Grid item xs={6} >
-              <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Aldea</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.aldea}
-                          style={{ borderRadius: '3px' }}
-                          label="Aldeas"
-                          defaultValue={aldeaselec}
-                          onChange={e => {
-                            setaldeaselec(e.target.value)
-                          }}
-                        >
-                          {AldeaDDL.map(aldea => (
-                          <MenuItem key={aldea.alde_Id} value={aldea.alde_Id}>
-                            {aldea.aldea}
-                          </MenuItem>
-                        ))} 
-                        </Select>
-                    )}
-                    name="aldea"
-                    control={control}
-                  />
-              </FormControl>
-            </Grid>
             <Grid item xs={12}>
-            <div className="mt-5 mb-16" style={{ width: '100%'}}>
+            <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar colonia" : "Agregar colonia"}
+                  />
+                </Divider>
+            </Grid>
+
+            <Grid item xs={6} >
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.pais}>País</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="pais"
+                      options={PaisDDL}
+                      value={datosWatch["pais"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('pais', value)
+                          setValue('provincia', null)
+                          setValue('ciudad', null)
+                          ddlProvincia(value?.value)
+                          if (!value) { setValue('pvin_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.pais}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
+                  />
+                  )}
+                  name="pais"
+                  control={control}
+                />
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={6} >
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.provincia}>Provincia</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="provincia"
+                      options={ProvinciaDDL}
+                      disabled={datosWatch['pais'] != null ? false : true}
+                      value={datosWatch["provincia"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('provincia', value)
+                          setValue('ciudad', null)
+                          ddlCiudades(value?.value)
+                          if (!value) { setValue('ciud_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.provincia}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
+                  />
+                  )}
+                  name="provincia"
+                  control={control}
+                />
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={6} >
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.ciudad}>Ciudad</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="ciudad"
+                      options={CiudadDDL}
+                      disabled={datosWatch['provincia'] != null ? false : true}
+                      value={datosWatch["ciudad"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('ciudad', value)
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.ciudad}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
+                  />
+                  )}
+                  name="ciudad"
+                  control={control}
+                />
+              </FormControl>
+            </Grid>
+
+
+            <Grid item xs={6}>
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.provincia}>Colonia</FormLabel>
                 <Controller
                   render={({ field }) => (
                     <TextField
-                    {...register("coloniaEditar")}
-                      label="Colonia"
+                      {...field}
                       variant="outlined"
                       error={!!errors.colonia}
-                      placeholder='Ingrese el nombre de la Colonia'
                       fullWidth
-                      InputProps={{startAdornment: (<InputAdornment position="start"></InputAdornment>),}}
                     />
                   )}
                   name="colonia"
                   control={control}
                 />
-              </div>
-            </Grid>  
+              </FormControl>
+            </Grid>
 
             <Grid
               item
@@ -1035,7 +833,7 @@ function ColoniasIndex() {
                   color: "white",
                   "&:hover": { backgroundColor: "#6e52ae" },
                 }}
-                onClick={EditarRegistro}
+                onClick={GuardarColonia}
               >
                 Editar
               </Button>
@@ -1060,114 +858,156 @@ function ColoniasIndex() {
       </Collapse>
       {/* Collapse para el formulario de editar un registro fin*/}
 
-      {/* Collapse para mostrar los detalles de un registro inicio*/}
+      {/* Inicia del collapse Detalles */}
       <Collapse in={mostrarDetalles}>
         <CardContent
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "flex-center",
           }}
-        >   
-         <Grid container spacing={3}> 
-         <Grid item xs={12}>
-              <h2>Detalles de la Colonia</h2>   
-              </Grid>   
-              <Grid item xs={12}>   
-                <Box sx={{ display: "flex", flexDirection: "row" }}>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="id">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Colonia Id:
-                      </Typography>
-                      <Typography>{id}</Typography>
-                    </InputLabel>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Colonia Descripcion:
-                      </Typography>
-                      <Typography>{colonia}</Typography>
-                    </InputLabel>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Aldea:
-                      </Typography>
-                      <Typography>{aldea}</Typography>
-                    </InputLabel>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Ciudad:
-                      </Typography>
-                      <Typography>{ciudad}</Typography>
-                    </InputLabel>
-                  </Box>
-                </Box>
-                </Grid> 
-                <br></br>   
-                <Grid item xs={12}>            
-                      <table
-                        id="detallesTabla"
-                        style={{ width: "100%", borderCollapse: "collapse" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>edit</Icon>Accion
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>person</Icon>Usuario
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>date_range</Icon>Fecha y
-                              hora
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Creación</strong>
-                            </td>
-                            <td style={tableCellStyle}>{usuariocrea}</td>
-                            <td style={tableCellStyle}>{fechacrea}</td>
-                          </tr>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Modificación</strong>
-                            </td>
-                            <td style={tableCellStyle}>{usuariomodifica}</td>
-                            <td style={tableCellStyle}>{fechamodifica}</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      </Grid> 
-              <br></br>
-              <Grid item xs={12}>    
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: "0px", marginBottom: "10px" }}>
+                <Chip label="Detalles de la colonia" />
+              </Divider>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id de la colonia:
+                  </Typography>
+                  <Typography>{DatosDetalles["colo_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre de la colonia:
+                  </Typography>
+                  <Typography>{DatosDetalles["colo_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Ciudad de la colonia:
+                  </Typography>
+                  <Typography>{DatosDetalles["ciud_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Provincia de la colonia:
+                  </Typography>
+                  <Typography>{DatosDetalles["pvin_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>
+                      Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>
+                      Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>
+                        date_range
+                      </Icon>
+                      Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioCreacionNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["colo_FechaCreacion"]
+                        ? new Date(
+                          DatosDetalles["colo_FechaCreacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioModificacionNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["colo_FechaModificacion"]
+                        ? new Date(
+                          DatosDetalles["colo_FechaModificacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarDetalles}
+                  onClick={() => {
+                    CerrarDetalles();
+                  }}
                   startIcon={<Icon>arrow_back</Icon>}
                 >
                   Regresar
                 </Button>
               </div>
-              </Grid>
-              </Grid>  
+            </Grid>
+          </Grid>
         </CardContent>
       </Collapse>
-      {/* Collapse para mostrar los detalles de un registro fin*/}
+      {/* Fin del Collapse Detalles */}
 
 
       <Dialog
         open={Eliminar}
-        fullWidth="md"
+        fullWidth
         onClose={DialogEliminar}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
@@ -1177,39 +1017,39 @@ function ColoniasIndex() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-          ¿Está seguro(a) que desea eliminar este registro?
+            ¿Está seguro(a) que desea eliminar este registro?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
-                sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
-                }}
-                onClick={DialogEliminar}
-              >
-                Eliminar
-              </Button>
+          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
+            <Button
+              startIcon={<Icon>checked</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: '10px', marginRight: '10px' }}
+              sx={{
+                backgroundColor: '#634A9E', color: 'white',
+                "&:hover": { backgroundColor: '#6e52ae' },
+              }}
+              onClick={DialogEliminar}
+            >
+              Eliminar
+            </Button>
 
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={DialogEliminar}
-              >
-                Cancelar
-              </Button>
-            </Grid>
+            <Button
+              startIcon={<Icon>close</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: '10px' }}
+              sx={{
+                backgroundColor: '#DAD8D8', color: 'black',
+                "&:hover": { backgroundColor: '#BFBABA' },
+              }}
+              onClick={DialogEliminar}
+            >
+              Cancelar
+            </Button>
+          </Grid>
         </DialogActions>
       </Dialog>
 

@@ -3,23 +3,28 @@
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
-import { Button, FormControl, Icon, IconButton, InputAdornment, InputLabel, TextField, Box } from '@mui/material';
+import {
+  Button,
+  FormControl,
+  Icon,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  TextField,
+  Autocomplete,
+  Divider,
+  Chip,
+  Box,
+} from '@mui/material';
+
 import * as React from 'react';
 import Stack from '@mui/material/Stack';
-import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
-
-import Zoom from '@mui/material/Zoom';
-import Grow from '@mui/material/Grow';
-
 import Collapse from '@mui/material/Collapse';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -27,150 +32,252 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import FormLabel from '@mui/material/FormLabel';
 
+// Imports de validaciones
 import * as yup from 'yup';
-import { useForm, Controller } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import Swal from 'sweetalert2'
-
-import { DownOutlined } from '@ant-design/icons';
-import { Badge, Dropdown, Space, Table } from 'antd';
-import { keyBy, set } from 'lodash';
-
-import { toast, ToastContainer } from 'react-toastify';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+// Imports tabla
+import { Table } from 'antd';
+import LoadingIcon from 'src/styles/iconoCargaTabla';
+import 'src/styles/custom-pagination.css';
+// import tabla detalles
+import estilosTablaDetalles from 'src/styles/tablaDetalles';
+// Import service
+import materialesService from './MaterialesService';
+// Import ddls
+import load_DDLs from 'src/app/loadDDLs/Load_DDL';
+// import Toast
 import 'react-toastify/dist/ReactToastify.css';
+import { ToastSuccess, ToastWarning, ToastError } from 'src/styles/toastsFunctions';
+
+
+const defaultMaterialesValues = {
+  id: '', // id necesario para el editar
+  mate_Descripcion: '',
+  mate_Precio: '',
+  categorias: null,
+  subcategoria: null,
+};
+
+
+const schema = yup.object().shape({
+  id: yup.string(),
+  categorias: yup.object().required(""),
+  subcategoria: yup.object().required(""),
+  mate_Descripcion: yup.string().trim().required(""),
+  mate_Precio: yup.string().trim().required(""),
+});
 
 function MaterialesIndex() {
+  // variable para la barra de busqueda
   const [searchText, setSearchText] = useState('');
+
+  // Variables para los collapse
   const [mostrarIndex, setmostrarIndex] = useState(true);
   const [mostrarAdd, setmostrarAdd] = useState(false);
-  const [Eliminar, setEliminar] = useState(false);
   const [mostrarEditar, setmostrarEditar] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
-  const [categoria, setcategoria] = useState("");
-  const [subcategoria, setsubcategoria] = useState("");
-  const [material, setmaterial] = useState("");
-  const [id, setid] = useState("");
 
+
+  // variable para el dialog(modal) de eliminar
+  const [Eliminar, setEliminar] = useState(false);
+
+  // Variable que indica si el usuario a seleccionar crear o editar
+  const [editar, setEditar] = useState(false);
+
+  // Variable que guarda la cantidad de filas a mostrar
+  const [filas, setFilas] = React.useState(10);
+
+  // Variable que hace algo con el menu XD
+  const [anchorEl, setAnchorEl] = useState({});
+
+  /* Datos de la tabla */
+  const [data, setData] = useState([]);
+
+  //DDL de categorias
+  const [categoriaDDL, setCategoriaDDL] = useState([]);
+
+  //DDL de subcategorias
+  const [subcategoriaDDL, setsubcategoriaDDL] = useState([]);
+
+  const [DatosDetalles, setDatosDetalles] = useState({});
+
+  //Controlador del collapse detalles
+  const CollapseDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+  };
+
+  
+  
+  
+  useEffect(() => {
+    ddls();
+    materialesGetData();
+  }, []);
+  
+  
+   // Peticion para cargar datos de la tabla
+   const materialesGetData = async () => {
+    try {
+      setData(await materialesService.listar());
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+  
+  //Peticion para crear un registrar 
+  const materialesCreate = async () => {
+    try {
+      const response = await materialesService.crear(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        materialesGetData();
+        VisibilidadTabla();
+        reset(defaultMaterialesValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
+    }
+  };
+
+
+  const materialesEdit = async () => {
+    try {
+      const response = await materialesService.editar(datosWatch);
+      if (response.data.data.messageStatus === '1') {
+        ToastSuccess('El registro se ha editado exitosamente');
+        materialesGetData();
+        VisibilidadTabla();
+        reset(defaultMaterialesValues);
+      } else if (response.data.data.messageStatus.includes('UNIQUE')) {
+        ToastWarning('El registro ya existe');
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError('Error inesperado');
+    }
+  };
+
+  
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTabla = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAdd(!mostrarAdd);
+    reset(defaultMaterialesValues);
+  };
+
+  // Controlador del dialog(modal) eliminar
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
   };
 
-  const [anchorEl, setAnchorEl] = useState({});
-
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (rowId, categoria, subcategoria, material) => {
-    setid(rowId);
-    setcategoria(categoria);
-    setsubcategoria(subcategoria);
-    setmaterial(material);
-
-    //const tableRows = document.querySelectorAll('#detallesTabla tbody tr')
-    //tableRows[0].cells[1].textContent = localStorage.getItem('Masiso rey')
-    //tableRows[0].cells[2].textContent = localStorage.getItem('Que crack que sos')
-    //tableRows[1].cells[1].textContent = localStorage.getItem('Ombe trabaje')
-    //tableRows[1].cells[2].textContent = localStorage.getItem('Muchachos escucharon el rempalago?')
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos)
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+    handleClose(datos.mate_Id);
   };
 
+  // controlador de las fillas a mostrar
+  const handleChangeFilas = (event) => {
+    setFilas(event.target.value);
+  };
+
+  // abre el menu al cual se le dio click
   const handleClick = (event, id) => {
-    setAnchorEl(prevState => ({
+    setAnchorEl((prevState) => ({
       ...prevState,
       [id]: event.currentTarget,
     }));
   };
 
+
+  // Cierra el menu abierto
   const handleClose = (id) => {
-    setAnchorEl(prevState => ({
+    setAnchorEl((prevState) => ({
       ...prevState,
       [id]: null,
     }));
   };
 
-  const handleEdit = (id, categoria, subcategoria, material) => {
-    setcategoria(categoria);
-    setsubcategoria(subcategoria);
-    setmaterial(material);
-    setid(id);
-    console.log(material);
-    MostrarEditar();
-    handleClose(id);
-  };
 
-  const handleDetails = (id, categoria, subcategoria, material) => {
-    DetallesTabla(id, categoria, subcategoria, material);
-    MostrarDetalles();
-    handleClose(id);
-  };
 
-  const handleDelete = (id) => {
-      DialogEliminar();
-      handleClose(id);
-  };
-
-  const [filas, setFilas] = React.useState(10);
-
-  const handleChange = (event) => {
-    setFilas(event.target.value);
+  //Controlador de la barra buscadora de la tabla
+  const handleSearchChange = (event) => {
+    setSearchText(event.target.value);
   };
 
 
-  /*Columnas de la tabla*/
+
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
+      title: '#',
+      dataIndex: 'key',
+      key: 'key',
+      sorter: (a, b) => a.key - b.key, // sorting para Numeros
     },
     {
-      title: 'Material',
-      dataIndex: 'material',
-      key: 'material',
-      sorter: (a, b) => a.material.localeCompare(b.material), //sorting para Letras
-    },
-    {
-      title: 'Categoria',
-      dataIndex: 'categoria',
-      key: 'categoria',
-      sorter: (a, b) => a.categoria.localeCompare(b.categoria), //sorting para Letras
+      title: 'Descripcion',
+      dataIndex: 'mate_Descripcion',
+      key: 'mate_Descripcion',
+      sorter: (a, b) => a.mate_Descripcion.localeCompare(b.mate_Descripcion), // sorting para Letras
     },
     {
       title: 'Subcategoria',
-      dataIndex: 'subcategoria',
-      key: 'subcategoria',
-      sorter: (a, b) => a.subcategoria.localeCompare(b.subcategoria), //sorting para Letras
+      dataIndex: 'subc_Descripcion',
+      key: 'subc_Descripcion',
+      sorter: (a, b) => a.subc_Descripcion.localeCompare(b.subc_Descripcion), // sorting para Letras
+    },
+
+    {
+      title: 'Precio',
+      dataIndex: 'mate_Precio',
+      key: 'mate_Precio',
+      sorter: (a, b) => a.mate_Precio.localeCompare(b.mate_Precio), // sorting para Letras
     },
     {
       title: 'Acciones',
       key: 'operation',
       render: (params) => (
-        <div key={params.id}>
+        <div key={params.mate_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.mate_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              onClick={(e) => handleClick(e, params.mate_Id)}
               variant="contained"
-              style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
+              style={{
+                borderRadius: '10px',
+                backgroundColor: '#634A9E',
+                color: 'white',
+              }}
               startIcon={<Icon>menu</Icon>}
             >
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.mate_Id}`}
+              anchorEl={anchorEl[params.mate_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.mate_Id])}
+              onClose={() => handleClose(params.mate_Id)}
             >
-              <MenuItem onClick={() => handleEdit(params.id, params.categoria, params.subcategoria, params.material)}>
-                <Icon>edit</Icon> Editar
+              <MenuItem onClick={() => handleEdit(params)}>
+                <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id, params.categoria, params.subcategoria, params.material)}>
-                <Icon>visibility</Icon> Detalles
+              <MenuItem onClick={() => handleDetails(params)}>
+                <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.id)}>
+              {/* <MenuItem onClick={() => handleDelete(params)}>
                 <Icon>delete</Icon> Eliminar
-              </MenuItem>
+              </MenuItem> */}
             </Menu>
           </Stack>
         </div>
@@ -178,234 +285,131 @@ function MaterialesIndex() {
     },
   ];
 
+//Constante para mostrar el collapse de editar un registro
+const MostrarCollapseEditar = () => {
+  setmostrarIndex(!mostrarIndex);
+  setmostrarEditar(!mostrarEditar);
+  reset(defaultMaterialesValues);
+};
+const CerrarEditar = () => {
+  setmostrarIndex(!mostrarIndex);
+  setmostrarEditar(!mostrarEditar);
+  reset(defaultMaterialesValues);
+};
 
-  {/*Codigo para validaciones */}
 
-const defaultMaterialesValues = {
-  material: '',
-  categoria: '',
-  subcategoria: '',
-}
-
-const MaterialesSchema = yup.object().shape({
-  material: yup.string().required(),
-  categoria: yup.string().required(),
-  subcategoria: yup.string().required(),
-})
-
-  {/*Datos de la tabla*/  }
-  const data = [];
-  for (let i = 1; i < 30; ++i) {
-    data.push({
-      key: i.toString(),
-      id: i.toString(),
-      material: 'material',
-      categoria: 'categoria',
-      subcategoria: 'subcategoria',
-      // tabla: [
-        // { key: '1',material: 'Tela coral',    categoria: 'Tela', subcategoria: 'Algodón' },
-        // { key: '2',material: 'Botón negro',    categoria: 'Botón', subcategoria: 'Metal' },
-        // { key: '3',material: 'Zipper 15 cm',    categoria: 'Zipper', subcategoria: 'Jean' },
-      //   ],
-    });
+  //Cargado de las variables DDL
+  async function ddls() {
+    setCategoriaDDL(await load_DDLs.Categorias());
   }
 
-  
-  //Constante para mostrar el collapse de editar un registro
-  const MostrarEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultMaterialesValues);
-  };
 
-  //Constante para mostrar el collapse de detalles un registro
-  const MostrarDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-  // Cerrar un Editar
-  const CerrarEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultMaterialesValues);
-
-  };
-
-  // Cerrar un Detalles
-  const CerrarDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-    reset(defaultMaterialesValues);
-
-  };
-
-  const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
-  };
-
-  {/*Filtrado de datos*/  }
-  const filteredRows = data.filter((row) =>
-    Object.values(row).some((value) =>
-      typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
-
-  
-{/* Función para mostrar la tabla y mostrar agregar */ }
-const VisibilidadTabla = () => {
-  setmostrarIndex(!mostrarIndex);
-  setmostrarAdd(!mostrarAdd);
-  reset(defaultMaterialesValues);
-};
-
-{/* Función para mostrar la tabla y mostrar agregar */ }
-const VisibilidadTabla2 = () => {
-  setmostrarIndex(!mostrarIndex);
-  setmostrarAdd(!mostrarAdd);
-  reset(defaultMaterialesValues);
-};
-
-const {handleSubmit, register, reset, control, watch, formState } = useForm({
-  defaultMaterialesValues,
-  mode: 'all',
-  resolver: yupResolver(MaterialesSchema),
-});
-
-const { isValid, dirtyFields, errors } = formState;
-
-const onSubmit = (data) => {
-  if(data.material != null || data.categoria != null || data.subcategoria != null){
-    if (data.material.trim() === '' || data.categoria.trim() === '' || data.subcategoria.trim() === '') {
-      toast.error('Debe completar los campos.', {
-        theme: 'dark',
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
-    } else {
-      VisibilidadTabla();
-      toast.success('Datos ingresados correctamente.', {
-        theme: 'dark',
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
+  //Cargado de ddl de subcategoria
+  async function ddlSubcategoria(id) {
+    try {
+      const subcategorias = await load_DDLs.SubCategoriasPorCategoria(id);
+      console.log("Subcategorías cargadas:", subcategorias);
+      setsubcategoriaDDL(subcategorias);
+    } catch (error) {
+      console.log("Error al cargar subcategorías:", error);
     }
-  }else{
-    toast.error('Debe completar los campos.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
   }
-};
+  const handleEdit = async (datos) => {
+    handleClose(datos.mate_Id);
+    MostrarCollapseEditar();
+    setEditar(true);
+  
+    // Insertar aquí las variables necesarias en su formulario
+    setValue('id', datos.mate_Id);
+    setValue('mate_Descripcion', datos['mate_Descripcion']);
+    setValue('mate_Precio', datos['mate_Precio']);
+    setValue('categorias', { value: datos['cate_Id'], label: datos['cate_Descripcion'] });
+    ddlSubcategoria(datos['cate_Id']); 
+    setValue('subcategoria', { value: datos['subc_Id'], label: datos['subc_Descripcion'] });
 
-  //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-  const ValidacionesEditar = (data) => {
-    if(data.material != null || data.categoria != null || data.subcategoria != null){
-      if (data.material.trim() === '' || data.categoria.trim() === '' || data.subcategoria.trim() === '') {
-        toast.error('Debe completar los campos.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-      } else {
-        MostrarEditar();
-        toast.success('Datos ingresados correctamente.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
+    console.log(categorias);
+
+  };
+  
+
+
+
+  // // Constantes de los campos que se utilizaran para filtrar datos (Ingresar los campos que pusieron en la tabla(Columns))
+  const camposToFilter = ['key', 'mate_Descripcion', 'subc_Descripcion', 'mate_Precio'];
+
+  // Constante que ayuda a filtrar el datatable
+  const filteredRows = data.filter((row) => {
+    if (searchText === '') {
+      return true; // Mostrar todas las filas si el buscador está vacío
+    }
+
+    for (const [key, value] of Object.entries(row)) {
+      if (camposToFilter.includes(key)) {
+        const formattedValue =
+          typeof value === 'number' ? value.toString() : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === 'number' ? searchText.toString() : searchText.toLowerCase();
+        if (formattedValue.includes(formattedSearchText)) {
+          return true;
+        }
       }
-    } else {
-      toast.error('Debe completar los campos.', {
-        theme: 'dark',
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
     }
-  };
+    return false;
+  });
 
-const Masiso = () => {
-  const formData = watch();
-  onSubmit(formData); 
-  handleSubmit(onSubmit)(); 
-  reset(defaultMaterialesValues);
+
+  // Declaracion del formulario
+  const { handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
+    defaultMaterialesValues, // Campos del formulario
+    mode: 'all',
+    resolver: yupResolver(schema), // Esquema del formulario
+  });
+
+
+  //Validacion de campos vacios y errores
+  const { isValid, dirtyFields, errors } = formState;
+
+  //Datos del formulario
+  const datosWatch = watch();
+// Controlador del formulario
+
+
+
+const GuardarMateriales = () => {
+  if (isValid) {
+    // Validacion de campos completos
+    if (!editar) {
+      // Validacion de la funcion a realizar
+      materialesCreate();
+    } else {
+      materialesEdit();
+    }
+  } else {
+    ToastWarning('Completa todos los campos');
+  }
 };
 
-  //Constante para ejecutar las validaciones y el envio del formulario en el boton de editar en el collapse de editar
-  const EditarRegistro = () => {
-    const formData = watch();
-    formData.categoria = categoria;
-    formData.subcategoria = subcategoria;
-    formData.material = material;
-    ValidacionesEditar(formData);
-    setTimeout(() => {
-      reset(defaultMaterialesValues);
-      handleSubmit(ValidacionesEditar)();
-    }, "250")
-  };
+  // useEffect para cargar datos al ingresar a la pantalla
+ 
 
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
-
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
 
   return (
     <Card sx={{ minWidth: 275, margin: '40px' }}>
-      <ToastContainer/>
       <CardMedia
         component="img"
         height="200"
         image="https://i.ibb.co/cL2c1Zs/MATERIALES.png"
         alt="Encabezado de la carta"
       />
+      {/* Inicio del Collapse incial (Tabla/Index) */}
       <Collapse in={mostrarIndex}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
+        <CardContent
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+          }}
+        >
           {/* Botón de Nuevo */}
           <Stack direction="row" spacing={1}>
             <Button
@@ -414,183 +418,231 @@ const Masiso = () => {
               color="primary"
               style={{ borderRadius: '10px' }}
               sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
+                backgroundColor: '#634A9E',
+                color: 'white',
+                '&:hover': { backgroundColor: '#6e52ae' },
               }}
-              onClick={VisibilidadTabla}
+              onClick={() => {
+                VisibilidadTabla();
+                setEditar(false);
+              }}
             >
               Nuevo
             </Button>
           </Stack>
-
-              {/* Filas */}
-              <Stack direction="row" spacing={1}>
-              <label className='mt-8'>Filas por página:</label>
-              <FormControl sx={{ minWidth: 50 }} size="small">
-              {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
+          {/* Filtros de la tabla (Filas/Buscar) */}
+          <Stack direction="row" spacing={1}>
+            <label className="mt-8">Filas por página:</label>
+            <FormControl sx={{ minWidth: 50 }} size="small">
               <Select
-                  labelId="demo-select-small-label"
-                  id="demo-select-small"
-                  value={filas}
-                  // label="Filas"
-                  onChange={handleChange}
+                labelId="demo-select-small-label"
+                id="demo-select-small"
+                value={filas}
+                onChange={handleChangeFilas}
               >
-                  <MenuItem value={10}>10</MenuItem>
-                  <MenuItem value={20}>20</MenuItem>
-                  <MenuItem value={30}>30</MenuItem>
+                <MenuItem value={10}>10</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
               </Select>
-              </FormControl>
-              {/* Barra de Busqueda en la Tabla */}
-              <TextField
+            </FormControl>
+
+            {/* Barra de Busqueda en la Tabla */}
+            <TextField
               style={{ borderRadius: '10px' }}
-              placeholder='Buscar'
+              placeholder="Buscar"
               value={searchText}
               onChange={handleSearchChange}
               size="small"
               variant="outlined"
               InputProps={{
-                  startAdornment: (
+                startAdornment: (
                   <InputAdornment position="start">
-                      <IconButton edge="start">
+                    <IconButton edge="start">
                       <SearchIcon />
-                      </IconButton>
+                    </IconButton>
                   </InputAdornment>
-                  ),
+                ),
               }}
-              />
-
+            />
           </Stack>
-
         </CardContent>
-      </Collapse>
 
-      {/* Tabla */}
-      <Collapse in={mostrarIndex}>
-      <div className='center' style={{ width: '95%', margin: 'auto' }}>
-        <Table
+        {/* Declaracion de la tabla */}
+        <div className="center" style={{ width: '95%', margin: 'auto' }}>
+          <Table
             columns={columns}
             dataSource={filteredRows}
             size="small"
-            pagination={{
-            pageSize: filas
-            , className: 'decoration-white'
+            locale={{
+              triggerDesc: 'Ordenar descendente',
+              triggerAsc: 'Ordenar ascendente',
+              cancelSort: 'Cancelar',
+              emptyText: LoadingIcon(),
             }}
-        />
+            pagination={{
+              pageSize: filas,
+              showSizeChanger: false,
+              className: 'custom-pagination',
+            }}
+          />
         </div>
       </Collapse>
-
-
-      {/* Formulario Agregar */}
-      <Collapse in={mostrarAdd}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Grid container spacing={3}>
-
-          <Grid item xs={6} style={{ marginTop: '30px' }}>
-                <Controller
-                    render={({ field }) => (
-                       <FormControl fullWidth>
-                      <InputLabel id="demo-select-small-label">Categoría</InputLabel>
-                      <Select
-                      {...field}
-                      variant='outlined'
-                      error={!!errors.categoria}
-                      style={{ borderRadius: '3px' }}
-                      label="Categoría"
-                      defaultValue={" "}
-                    >
-                      <MenuItem value='1'>Tela</MenuItem>
-                      <MenuItem value='2'>Botón</MenuItem>
-                      <MenuItem value='3'>Aguja</MenuItem>
-                    </Select>
-                </FormControl>
-                    )}
-                    name="categoria"
-                    control={control}
-                  />
-                  
-            </Grid>
-
-            <Grid item xs={6} style={{ marginTop: '30px' }}>
-              <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Subcategoría</InputLabel>
+      {/* Fin del Collapse incial (Tabla/Index) */}
+      {/* Inicio del Formulario */}
+      <form onSubmit={handleSubmit((_data) => { })}>
+        <Collapse in={mostrarAdd}>
+          <CardContent
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+            }}
+          >
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Divider style={{ marginTop: '0px', marginBottom: '0px' }}>
+                  <Chip label={editar ? 'Editar Materiales' : 'Agregar Materiales'} />
+                </Divider>
+              </Grid>
+              
+              <Grid item xs={6} >
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.categorias}>Categorias</FormLabel>
                   <Controller
                     render={({ field }) => (
-                        <Select
+                      <Autocomplete
                         {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.subcategoria}
-                          style={{ borderRadius: '3px' }}
-                          label="Subcategoría"
-                          defaultValue={" "}
-                        >
-                          <MenuItem value='1'>Algodón</MenuItem>
-                          <MenuItem value='2'>Metal</MenuItem>
-                          <MenuItem value='3'>Jean</MenuItem>
-                        </Select>
+                        disablePortal
+                        isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                        }
+                        id="categorias"
+                        options={categoriaDDL}
+                        value={datosWatch["categorias"] ?? null}
+                        onChange={async (event, value) => {
+                          setValue('categorias', value)
+                          setValue('subcategoria', null)
+                          ddlSubcategoria(value?.value)
+                          if (!value) { setValue('subc_Id', []) }
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            error={!!errors.categorias}
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        )}
+                      />
                     )}
-                    name="subcategoria"
+                    name="categorias"
                     control={control}
                   />
-              </FormControl>
-            </Grid>
+                </FormControl>
+              </Grid>
 
-            <Grid item xs={12} >
-            <div className="mt-1 mb-16">
+              <Grid item xs={6} >
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.subcategoria}>Subcategoria</FormLabel>
                 <Controller
                   render={({ field }) => (
-                    <TextField
+                    <Autocomplete
                       {...field}
-                      label="Material"
-                      variant="outlined"
-                      error={!!errors.material}
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
+                      id="subcategoria"
+                      isOptionEqualToValue={(option, value) =>
+                        option.value === value?.value
+                      }
+                      options={subcategoriaDDL}
+                      disabled={!datosWatch.categorias} // Deshabilitar si no hay categoría seleccionada
+                      value={datosWatch.subcategoria ?? null}
+                      onChange={(event, value) => {
+                        setValue("subcategoria", value);
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} error={!!errors.subcategoria} InputLabelProps={{ shrink: true }} />
+                      )}
                     />
                   )}
-                  name="material"
+                  name="subcategorias"
                   control={control}
                 />
-              </div>
-            </Grid>
+              </FormControl>
+              </Grid>
 
-            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
+              <Grid item xs={6}>
+              <FormLabel error={!!errors.mate_Descripcion}>Descripcion</FormLabel>
+                <Controller render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    error={!!errors.mate_Descripcion}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                )}
+                  name='mate_Descripcion'
+                  control={control} />
+              </Grid>
+
+              <Grid item xs={6}>
+              <FormLabel error={!!errors.mate_Precio}>Precio material</FormLabel>
+                <Controller render={({ field }) => (
+                  <TextField
+                    {...field}
+                    fullWidth
+                    error={!!errors.mate_Precio}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                )}
+                  name='mate_Precio'
+                  control={control} />
+              </Grid>
+
+              <Grid
+                item
+                xs={12}
                 sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
+                  display: 'flex',
+                  justifyContent: 'right',
+                  alignItems: 'right',
                 }}
-                onClick={Masiso}
               >
-                Guardar
-              </Button>
+                <Button
+                  type="submit"
+                  startIcon={<Icon>checked</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: '10px', marginRight: '10px' }}
+                  sx={{
+                    backgroundColor: '#634A9E',
+                    color: 'white',
+                    '&:hover': { backgroundColor: '#6e52ae' },
+                  }}
+                  onClick={GuardarMateriales}
+                >
+                  {editar ? 'Editar' : 'Guardar'}
+                </Button>
 
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={VisibilidadTabla2}
-              >
-                Cancelar
-              </Button>
+                <Button
+                  startIcon={<Icon>close</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: '10px' }}
+                  sx={{
+                    backgroundColor: '#DAD8D8',
+                    color: 'black',
+                    '&:hover': { backgroundColor: '#BFBABA' },
+                  }}
+                  onClick={VisibilidadTabla}
+                >
+                  Cancelar
+                </Button>
+              </Grid>
             </Grid>
-
-          </Grid>
-        </CardContent>
-      </Collapse>
-    {/* Formulario Agregar */}
-
-      {/* Collapse para el formulario de editar un registro inicio*/}
-    <Collapse in={mostrarEditar}>
+          </CardContent>
+        </Collapse>
+      </form>
+          
+        {/* Collapse para el formulario de editar un registro inicio*/}
+        <Collapse in={mostrarEditar}>
         <CardContent
           sx={{
             display: "flex",
@@ -599,76 +651,110 @@ const Masiso = () => {
           }}
         >
           <Grid container spacing={3}>
-          <Grid item xs={6} style={{ marginTop: '30px' }}>
-                <Controller
-                    render={({ field }) => (
-                       <FormControl fullWidth>
-                      <InputLabel id="demo-select-small-label">Categoría</InputLabel>
-                      <Select
-                      {...field}
-                      variant='outlined'
-                      error={!!errors.categoria}
-                      style={{ borderRadius: '3px' }}
-                      label="Categoría"
-                      value={categoria}
-                    >
-                      <MenuItem value='1'>Tela</MenuItem>
-                      <MenuItem value='2'>Botón</MenuItem>
-                      <MenuItem value='3'>Aguja</MenuItem>
-                    </Select>
-                </FormControl>
-                    )}
-                    name="categoria"
-                    control={control}
+            <Grid item xs={12}>
+            <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar Material" : "Agregar ciudad"}
                   />
-                  
+                </Divider>
             </Grid>
 
-            <Grid item xs={6} style={{ marginTop: '30px' }}>
+            <Grid item xs={6} >
               <FormControl fullWidth>
-                <InputLabel id="demo-select-small-label">Subcategoría</InputLabel>
-                  <Controller
-                    render={({ field }) => (
-                        <Select
-                        {...field}
-                        variant='outlined'
-                        fullWidth
-                          error={!!errors.subcategoria}
-                          style={{ borderRadius: '3px' }}
-                          label="Subcategoría"
-                          value={subcategoria}
-                        >
-                          <MenuItem value='1'>Algodón</MenuItem>
-                          <MenuItem value='2'>Metal</MenuItem>
-                          <MenuItem value='3'>Jean</MenuItem>
-                        </Select>
-                    )}
-                    name="subcategoria"
-                    control={control}
+                <FormLabel error={!!errors.categorias}>Categoria</FormLabel>
+                <Controller
+                  render={({ field }) => (
+                    <Autocomplete
+                      {...field}
+                      disablePortal
+                      isOptionEqualToValue={(option, value) =>
+                          option.value === value.value
+                      }
+                      id="categorias"
+                      options={categoriaDDL}
+                      value={datosWatch["categorias"] ?? null}
+                      onChange={async (event, value) => {
+                          setValue('categorias', value)
+                          setValue('subcategoria', null)
+                          ddlSubcategoria(value?.value)
+                          if (!value) { setValue('subc_Id', []) }
+                      }}
+                      renderInput={(params) => (
+                          <TextField
+                              {...params}
+                              error={!!errors.categorias}
+                              InputLabelProps={{ shrink: true }}
+                          />
+                      )}
                   />
+                  )}
+                  name="categorias"
+                  control={control}
+                />
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} >
-            <div className="mt-1 mb-16">
+            <Grid item xs={6} >
+              <FormControl fullWidth>
+                <FormLabel error={!!errors.subcategoria}>Sub Categorias</FormLabel>
                 <Controller
                   render={({ field }) => (
-                    <TextField
+                    <Autocomplete
                       {...field}
-                      label="Material"
-                      variant="outlined"
-                      error={!!errors.material}
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                      value={material}
+                      id="subcategoria"
+                      isOptionEqualToValue={(option, value) =>
+                        option.value === value?.value
+                      }
+                      options={subcategoriaDDL}
+                      disabled={datosWatch['categorias'] != null ? false : true}
+                      value={datosWatch.subcategoria ?? null}
+                      onChange={(event, value) => {
+                        setValue("subcategoria", value);
+                      }}
+                      renderInput={(params) => (
+                        <TextField {...params} error={!!errors.subcategoria} />
+                      )}
                     />
                   )}
-                  name="material"
+                  name="subcategorias"
                   control={control}
                 />
-              </div>
+              </FormControl>
             </Grid>
 
+
+            <Grid item xs={6}>
+            <FormLabel error={!!errors.mate_Descripcion}>Descripcion Material</FormLabel>
+              <Controller render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  error={!!errors.mate_Descripcion}
+                  InputLabelProps={{ shrink: true }}
+                />
+              )}
+                name='mate_Descripcion'
+                control={control} />
+            </Grid>
+               
+            
+            <Grid item xs={6}>
+            <FormLabel error={!!errors.mate_Precio}>Precio Material</FormLabel>
+              <Controller render={({ field }) => (
+                <TextField
+                  {...field}
+                  fullWidth
+                  error={!!errors.mate_Precio}
+                  InputLabelProps={{ shrink: true }}
+                />
+              )}
+                name='mate_Precio'
+                control={control} />
+            </Grid>
+            
+            
+            
+            
             <Grid
               item
               xs={12}
@@ -688,7 +774,7 @@ const Masiso = () => {
                   color: "white",
                   "&:hover": { backgroundColor: "#6e52ae" },
                 }}
-                onClick={EditarRegistro}
+                onClick={GuardarMateriales}
               >
                 Editar
               </Button>
@@ -713,163 +799,133 @@ const Masiso = () => {
       </Collapse>
       {/* Collapse para el formulario de editar un registro fin*/}
 
-      {/* Collapse para mostrar los detalles de un registro inicio*/}
-      <Collapse in={mostrarDetalles}>
+
+            {/* Collapse para mostrar los detalles de un registro inicio*/}
+            <Collapse in={mostrarDetalles}>
         <CardContent
           sx={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "flex-center",
           }}
-        >   
-         <Grid container spacing={3}> 
-         <Grid item xs={12}>
-              <h2>Detalles del Material</h2>   
-              </Grid>   
-              <Grid item xs={12}>   
-                <Box sx={{ display: "flex", flexDirection: "row" }}>
-                  <Box sx={{ flex: 1 }}>
-                    <InputLabel htmlFor="id">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Material Id:
-                      </Typography>
-                      <Typography>{id}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Material descripción:
-                      </Typography>
-                      <Typography>{material}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="categoria">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Categoria descripción:
-                      </Typography>
-                      <Typography>{categoria}</Typography>
-                    </InputLabel>
-                    <br></br> 
-                    <InputLabel htmlFor="subcategoria">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Subcategoria descripción:
-                      </Typography>
-                      <Typography>{subcategoria}</Typography>
-                    </InputLabel>
-                  </Box>
-                </Box>
-                </Grid> 
-                <br></br>   
-                <Grid item xs={12}>            
-                      <table
-                        id="detallesTabla"
-                        style={{ width: "100%", borderCollapse: "collapse" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>edit</Icon>Accion
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>person</Icon>Usuario
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>date_range</Icon>Fecha y
-                              hora
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Creación</strong>
-                            </td>
-                            <td style={tableCellStyle}>Usuario Creación</td>
-                            <td style={tableCellStyle}>00/00/0000</td>
-                          </tr>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Modificación</strong>
-                            </td>
-                            <td style={tableCellStyle}>Usuario Modificación</td>
-                            <td style={tableCellStyle}>00/00/0000</td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      </Grid> 
-              <br></br>
-              <Grid item xs={12}>    
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: '30px' }}>
+              <Divider style={{ marginTop: '0px', marginBottom: '10px' }}>
+                <Chip label="Detalles del Material" />
+              </Divider>
+            </Grid>
+
+            <Grid container spacing={2} style={{ display: "flex", justifyContent: "center", marginBottom: '40px' }}>
+              <Box sx={{ flex: 1, textAlign: "center", }} >
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id del Material:
+                  </Typography>
+                  <Typography>{DatosDetalles['mate_Id']}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center", }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre del Material:
+                  </Typography>
+                  <Typography>{DatosDetalles['mate_Descripcion']}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Subcategoria:
+                  </Typography>
+                  <Typography>{DatosDetalles["subc_Descripcion"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Precio del Material:
+                  </Typography>
+                  <Typography>{DatosDetalles["mate_Precio"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+           
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>date_range</Icon>Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DatosDetalles['usuarioCreacionNombre']}</td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles['mate_FechaCreacion']
+                        ? new Date(DatosDetalles['mate_FechaCreacion']).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DatosDetalles['usuarioModificacionNombre']}</td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles['mate_FechaModificacion']
+                        ? new Date(DatosDetalles['mate_FechaModificacion']).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarDetalles}
+                  onClick={() => {
+                    setmostrarIndex(!mostrarIndex);
+                    setmostrarDetalles(!mostrarDetalles);
+                  }}
                   startIcon={<Icon>arrow_back</Icon>}
                 >
                   Regresar
                 </Button>
               </div>
-              </Grid>
-              </Grid>  
+            </Grid>
+          </Grid>
         </CardContent>
       </Collapse>
-      {/* Collapse para mostrar los detalles de un registro fin*/}
 
-
-    {/* Dialog eliminar */}
-      <Dialog
-        open={Eliminar}
-        fullWidth="md"
-        onClose={DialogEliminar}
-        aria-labelledby="alert-dialog-title"
-        aria-describedby="alert-dialog-description"
-      >
-        <DialogTitle id="alert-dialog-title">
-          Confirmación de Eliminación
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="alert-dialog-description">
-          ¿Está seguro(a) que desea eliminar este registro?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
-                sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
-                }}
-                onClick={DialogEliminar}
-              >
-                Eliminar
-              </Button>
-
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={DialogEliminar}
-              >
-                Cancelar
-              </Button>
-            </Grid>
-        </DialogActions>
-      </Dialog>
-      {/* Dialog eliminar */}
-      <ToastContainer/>
     </Card>
-  );
+  )
 }
-
 export default MaterialesIndex;
-
-
-

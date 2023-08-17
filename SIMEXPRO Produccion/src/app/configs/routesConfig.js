@@ -8,56 +8,91 @@ import SignInConfig from '../main/sign-in/SignInConfig';
 import SignUpConfig from '../main/sign-up/SignUpConfig';
 import SignOutConfig from '../main/sign-out/SignOutConfig';
 import dashboardsConfigs from '../main/dashboards/dashboardsConfigs';
+import UnidadesMedidaConfig from '../Generales/UnidadesMedida/UniodadesMedidaConfig';
 import pagesConfigs from '../main/pages/pagesConfigs';
-import CiudadesIndex from '../Ubicaciones/Ciudades/Ciudades';
-import ProvinciasIndex from '../Ubicaciones/Provincias/Provincias';
-import PaisesIndex from '../Ubicaciones/Paises/Paises';
-import ColoniasIndex from '../Ubicaciones/Colonias/Colonias';
-import EstadosCivilesIndex from '../Personas/EstadosCiviles/EstadosCiviles';
-import CargosIndex from '../Personas/Cargos/Cargos';
-import OficinasIndex from '../Personas/Oficinas/Oficinas';
-import OficiosProfesiones from '../Personas/OficiosProfesiones/OficiosProfesiones';
+import UsuariosConfig from '../Seguridad/Usuarios/UsuariosConfig';
 import UsuariosIndex from '../Seguridad/Usuarios/Usuarios';
-import RolesIndex from '../Seguridad/Roles/roles';
-import RolesCrear from '../Seguridad/Roles/roles_crear';
-import EmpleadosIndex from '../Personas/Empleados/Empleados';
-import ProveedoresIndex from '../Personas/Proveedores/Proveedores';
-import CategoriaIndex from '../Inventario/Categoria/Categorias';
-import ColoresIndex from '../Prendas/Colores/Colores';
-import InspeccionesIndex from '../Produccion/Inspecciones/InspeccionesEstado';
-import MaquinaHistorialIndex from '../Maquinaria/MaquinaHistorial/MaquinaHistorial';
-import MaterialesIndex from '../Inventario/Materiales/Materiales';
-import AreasIndex from '../Inventario/Areas/Areas';
-import EstilosIndex from '../Prendas/Estilos/Estilos';
-import FuncionesMaquinaIndex from '../Maquinaria/FuncionesMaquina/FuncionesMaquina';
-import LotesIndex from '../Inventario/Lotes/Lotes';
-import SubcategoriaIndex from '../Inventario/Subcategoria/Subcategorias';
-import TipoEmbalajeIndex from '../Inventario/TipoDeEmbalaje/TipoEmbalaje';
-import AldeaIndex from '../Ubicaciones/Aldeas/Aldeas';
 import OrdenProcesosIndex from '../Produccion/OrdenDeProcesos/OrdenDeProcesos';
 import CalendarApp from '../Produccion/Planificación/CalendarApp';
-import MaquinasIndex from '../Maquinaria/Máquinas/Maquinas';
-import FormaDeEnvioIndex from '../Generales/FormasEnvio/FormasEnvio';
-import MonedasIndex from '../Generales/Monedas/monedas';
-import ModuloIndex from '../Produccion/Modulos/Modulos';
-import ProcesosIndex from '../Produccion/Procesos/Procesos';
-import MarcasIndex from '../Maquinaria/MarcasMaquina/MarcasMaquina';
-import ModelosMaquinaIndex from '../Maquinaria/ModelosMaquina/ModelosMaquina';
 import Revision_de_Calidad_Index from '../Produccion/Revisión de Calidad/RevisionCalidad';
 import OrdenPedido_Index from '../Produccion/OrdenPedidos/OrdenPedido_Index';
 import OrdenPedido_Crear from '../Produccion/OrdenPedidos/OrdenPedido_Crear';
 import PedidosProduccion from '../Produccion/PedidosProduccion/PedidosProduccion';
 import PedidosProduccion_Crear from '../Produccion/PedidosProduccion/PedidosProduccion_Crear';
-import ModelosIndex from '../Prendas/Modelos/Modelos';
-import TallasIndex from '../Prendas/Tallas/Tallas';
 import OrdenCompraIndex from '../Produccion/OrdenCompra/OrdenCompra';
 import OrdenCompra_Crear from '../Produccion/OrdenCompra/OrdenCompra_Crear';
 import ReportesModulo from '../Reportes/RevisionModuloDia';
-import MaterialesBrindarIndex from '../Inventario/MaterialesBrindar/MaterialesBrindar';
-import EmpleadosCrear from '../Personas/Empleados/EmpleadosCrear';
-import EmpleadosEditar from '../Personas/Empleados/EmpleadosEditar';
 import forgotPasswordPagesConfig from '../main/forgot-password/forgotPasswordPagesConfig';
-import RolesEditar from '../Seguridad/Roles/roles_editar';
+import EmpleadosConfig from '../Personas/Empleados/EmpleadosConfig';
+import TiposIdentificacionConfig from '../Generales/TipoIdentificacion/TiposIdentificacionConfig';
+import CargosConfig from '../Personas/Cargos/CargosConfig';
+import MonedasConfig from '../Generales/Monedas/MonedasConfig';
+import AreasConfig from '../Inventario/Areas/AreasConfig';
+import CategoriasConfig from '../Inventario/Categoria/CategoriasConfig';
+import LotesConfig from '../Inventario/Lotes/LotesConfig';
+import MaterialesConfig from '../Inventario/Materiales/MaterialesConfig';
+import MaterialesBrindarConfig from '../Inventario/MaterialesBrindar/MaterialesBrindasConfig';
+import SubcategoriasConfig from '../Inventario/Subcategoria/SubcategoriasConfig';
+import FuncionesMaquinaConfig from '../Maquinaria/FuncionesMaquina/FuncionesMaquinaConfig';
+import MaquinaHistorialConfig from '../Maquinaria/MaquinaHistorial/MaquinaHistorialConfig';
+import MaquinasConfig from '../Maquinaria/Máquinas/MaquinasConfig';
+import MarcasMaquinaConfig from '../Maquinaria/MarcasMaquina/MarcasMaquinaConfig';
+import ModelosMaquinaConfig from '../Maquinaria/ModelosMaquina/ModelosMaquinaConfig';
+import EstadosCivilesConfig from '../Personas/EstadosCiviles/EstadosCivilesConfig';
+import OficinasConfig from '../Personas/Oficinas/OficinasConfig';
+import OficioProfesionesConfig from '../Personas/OficiosProfesiones/OficiosProfesionesConfig';
+import OficionesProfesionesIndex from '../Personas/OficiosProfesiones/OficiosProfesiones';
+import ProveedoresConfig from '../Personas/Proveedores/ProveedoresConfig';
+import ColoresConfig from '../Prendas/Colores/ColoresConfig';
+import TipoEmbalajeConfig from '../Inventario/TipoDeEmbalaje/TipoDeEmbalajeConfig';
+import EstilosConfig from '../Prendas/Estilos/EstilosConfig';
+import TallasConfig from '../Prendas/Tallas/TallasConfig';
+import InspeccionesConfig from '../Produccion/Inspecciones/InspeccionesEstadoConfig';
+import ModulosConfig from '../Produccion/Modulos/ModulosConfig';
+import OrdenDeProcesosConfig from '../Produccion/OrdenDeProcesos/OrdenDeProcesosConfig';
+import OrdenPedidoConfig from '../Produccion/OrdenPedidos/OrdenPedidoConfig';
+import ProcesosConfig from '../Produccion/Procesos/ProcesosConfig';
+import AldeasConfig from '../Ubicaciones/Aldeas/AldeasConfig';
+import CiudadesConfig from '../Ubicaciones/Ciudades/CiudadesConfig';
+import ColoniasConfig from '../Ubicaciones/Colonias/ColoniasConfig';
+import PaisesConfig from '../Ubicaciones/Paises/PaisesConfig';
+import RolesConfig from '../Seguridad/Roles/rolesconfig';
+import FormaEnvioConfig from '../Generales/FormasEnvio/FormaEnvioConfig';
+import FormaDeEnvioIndex from '../Generales/FormasEnvio/FormasEnvio';
+import RevisionCalidadConfig from '../Produccion/Revisión de Calidad/RevisionCalidadConfig';
+import ArancelesConfig from '../Impuestos/Aranceles/ArancelesConfig';
+import CodigoImpuestoConfig from '../Impuestos/CodigoImpuesto/CodigoImpuestoConfig';
+import ConceptoPagoConfig from '../Impuestos/ConceptoPago/ConceptoPagoConfig';
+import ImpuestosConfig from '../Impuestos/Impuestos/ImpuestosConfig';
+import ConductorConfig from '../Transporte/Conductor/ConductorConfig';
+import MarcasCarrosConfig from '../Transporte/MarcasCarros/MarcasCarrosConfig';
+import ModoTransporteConfig from '../Transporte/ModoTransporte/ModoTransporteConfig';
+import IncotermConfig from '../Impuestos/Incoterms/IncotermConfig';
+import LiquidacionGeneralConfig from '../Impuestos/LiquidacionGeneral/LiquidacionGeneralConfig';
+import TipoLiquidacionConfig from '../Impuestos/TipoLiqudacion/TipoLiquidacionConfig';
+import CondicionesComercialesConfig from '../Documentacion/CondicionesComerciales/CondicionesComercialesConfig';
+import DocumentosContratosConfig from '../Documentacion/DocumentosContratos/DocumentosContratosConfig';
+import EstadoBoletinConfig from '../Aministracion/EstadoBoletin/EstadoBoletinConfig';
+import EstadoMercanciaConfig from '../Aministracion/EstadoMercancia/EstadoMercanciaConfig';
+import ItemsConfig from '../Aministracion/Items/ItemsConfig';
+import LugaresEmbarqueConfig from '../Aministracion/LugaresEmbarque/LugaresEmbarqueConfig';
+import NivelesComercialesConfig from '../Aministracion/NivelesComerciales/NivelesComercialesConfig';
+import TipoDocumentoConfig from '../Documentacion/TipoDocumento/TipoDocumentosConfig';
+import TransporteConfig from '../Transporte/Transporte/TransporteConfig';
+import TipoIdentificacionConfig from '../Generales/TipoIdentificacion/TiposIdentificacionConfig';
+import TipoIntermediario from '../Personas/TipoIntermediario/TipoIntermediario';
+import TipoIntermediarioConfig from '../Personas/TipoIntermediario/TipoIntermediarioConfig';
+import PersonasConfig from '../Personas/Personas/PersonasConfig';
+import LiquidacionPorLineaConfig from '../Impuestos/LiquidacionPorLinea/LiquidacionPorLineaConfig';
+import FormasPagoConfig from '../Facturacion/FormasPago/FormasPagoConfig';
+import DucaConfig from '../Aduanas/DUCA/ducaConfig';
+import Declaracion_ValorConfig from '../Aduanas/Declaracion_De_Valor/Declaracion_ValorConfig';
+import ComercianteIndividualConfig from '../Aduanas/Contratos_de_Adhesión/Comerciante_Individual/Comerciante_Individual_Config';
+import ClientesConfig from '../Personas/Clientes/ClientesConfig';
+import PersonaNaturalConfig from '../Aduanas/Contratos_de_Adhesión/Persona_Natural/PersonaNaturalConfig';
+import EstadoMercanciasIndex from '../Aministracion/EstadoMercancia/EstadoMercancia';
+import Comerciante_IndividualConfig from '../Aduanas/Contratos_de_Adhesión/Comerciante_Individual/Comerciante_IndividualConfig';
+import ProvinciasConfig from '../Ubicaciones/Provincias/ProvinciasConfig';
 
 const routeConfigs = [
   ...dashboardsConfigs,
@@ -66,6 +101,74 @@ const routeConfigs = [
   SignInConfig,
   SignUpConfig,
   forgotPasswordPagesConfig,
+  ProvinciasConfig,
+  UsuariosConfig,
+  UnidadesMedidaConfig,
+  EmpleadosConfig,
+  TiposIdentificacionConfig,
+  CargosConfig,
+  MonedasConfig,
+  TiposIdentificacionConfig,
+  AreasConfig,
+  CategoriasConfig,
+  LotesConfig,
+  MaterialesConfig,
+  MaterialesBrindarConfig,
+  SubcategoriasConfig,
+  TipoEmbalajeConfig,
+  FuncionesMaquinaConfig,
+  MaquinaHistorialConfig,
+  MaquinasConfig,
+  MarcasMaquinaConfig,
+  ModelosMaquinaConfig,
+  CargosConfig,
+  EstadosCivilesConfig,
+  OficinasConfig,
+  OficioProfesionesConfig,
+  ColoresConfig,
+  EstilosConfig,
+  TallasConfig,
+  InspeccionesConfig,
+  ModulosConfig,
+  OrdenDeProcesosConfig,
+  OrdenPedidoConfig,
+  ProcesosConfig,
+  AldeasConfig,
+  CiudadesConfig,
+  ColoniasConfig,
+  PaisesConfig,
+  RolesConfig,
+  FormaEnvioConfig,
+  RevisionCalidadConfig,
+  ArancelesConfig,
+  CodigoImpuestoConfig,
+  ConceptoPagoConfig,
+  ImpuestosConfig,
+  ConductorConfig,
+  MarcasCarrosConfig,
+  ModoTransporteConfig,
+  IncotermConfig,
+  LiquidacionGeneralConfig,
+  TipoLiquidacionConfig,
+  CondicionesComercialesConfig,
+  DocumentosContratosConfig,
+  EstadoBoletinConfig,
+  EstadoMercanciaConfig,
+  ItemsConfig,
+  LugaresEmbarqueConfig,
+  NivelesComercialesConfig,
+  TipoDocumentoConfig,
+  TransporteConfig,
+  TipoIdentificacionConfig,
+  TipoIntermediarioConfig,
+  ProveedoresConfig,
+  PersonasConfig,
+  FormasPagoConfig,
+  DucaConfig,
+  Declaracion_ValorConfig,
+  ClientesConfig,
+  PersonaNaturalConfig,
+  Comerciante_IndividualConfig,
 ];
 
 const routes = [
@@ -83,145 +186,46 @@ const routes = [
     element: <Navigate to="pages/error/404" />,
   },
   {
-    path: 'Ciudades/Index',
-    element: <CiudadesIndex />,
+    path: 'Usuarios/Index',
+    element: <UsuariosIndex />,
   },
+
+
+  {
+    path: 'Usuarios/Index',
+    element: <UsuariosIndex />,
+  },
+
   {
     path: 'RevisionCalidad/Index',
     element: <Revision_de_Calidad_Index />,
   },
   {
-    path: 'Provincias/Index',
-    element: <ProvinciasIndex />,
+    path: 'OficiosProfesiones/Index',
+    element: <OficionesProfesionesIndex />,
   },
+
   {
-    path: 'Paises/Index',
-    element: <PaisesIndex />,
-  },
-  {
-    path: 'Colonias/Index',
-    element: <ColoniasIndex />,
-  },
-  {
-    path: 'FormaDeEnvio/Index',
+    path: 'FormasEnvio/Index',
     element: <FormaDeEnvioIndex />,
   },
-  {
-    path: 'Monedas/Index',
-    element: <MonedasIndex />,
-  },
-  {
-    path: 'Cargos/Index',
-    element: <CargosIndex />,
-  },
-  {
-    path: 'EstadosCiviles/Index',
-    element: <EstadosCivilesIndex />,
-  },
-  {
-    path: 'Oficinas/Index',
-    element: <OficinasIndex />,
-  },
+
   {
     path: 'OficiosProfesiones/Index',
-    element: <OficiosProfesiones />,
+    element: <OficionesProfesionesIndex />,
   },
+
+  {
+    path: 'FormasEnvio/Index',
+    element: <FormaDeEnvioIndex />,
+  },
+
   {
     path: 'Usuarios/Index',
     element: <UsuariosIndex />,
   },
-  {
-    path: 'Empleados/Index',
-    element: <EmpleadosIndex />,
-  },
-  {
-    path: 'Empleados/Crear',
-    element: <EmpleadosCrear />,
-  },
-  {
-    path: 'Empleados/Editar',
-    element: <EmpleadosEditar />,
-  },
-  {
-    path: 'Proveedores/Index',
-    element: <ProveedoresIndex />,
-  },
-  {
-    path: 'Roles/RolesIndex',
-    element: <RolesIndex />,
-  },
-  {
-    path: 'Roles/RolesCrear',
-    element: <RolesCrear />,
-  },
-  {
-    path: 'Categoria/Index',
-    element: <CategoriaIndex />,
-  },
-  {
-    path: 'Colores/Index',
-    element: <ColoresIndex />,
-  },
-  {
-    path: 'Inspecciones/Index',
-    element: <InspeccionesIndex />,
-  },
-  {
-    path: 'MaquinaHistorial/Index',
-    element: <MaquinaHistorialIndex />,
-  },
-  {
-    path: 'Categoria/Index',
-    element: <CategoriaIndex />,
-  },
-  {
-    path: 'Colores/Index',
-    element: <ColoresIndex />,
-  },
-  {
-    path: 'Inspecciones/Index',
-    element: <InspeccionesIndex />,
-  },
-  {
-    path: 'MaquinaHistorial/Index',
-    element: <MaquinaHistorialIndex />,
-  },
-  {
-    path: 'Materiales/Index',
-    element: <MaterialesIndex />,
-  },
-  {
-    path: 'MaterialesBrindar/Index',
-    element: <MaterialesBrindarIndex />,
-  },
-  {
-    path: 'Areas/Index',
-    element: <AreasIndex />,
-  },
-  {
-    path: 'Estilos/Index',
-    element: <EstilosIndex />,
-  },
-  {
-    path: 'FuncionesMaquina/Index',
-    element: <FuncionesMaquinaIndex />,
-  },
-  {
-    path: 'Lotes/Index',
-    element: <LotesIndex />,
-  },
-  {
-    path: 'Subcategorias/Index',
-    element: <SubcategoriaIndex />,
-  },
-  {
-    path: 'TipoEmbalaje/Index',
-    element: <TipoEmbalajeIndex />,
-  },
-  {
-    path: 'Aldea/Index',
-    element: <AldeaIndex />,
-  },
+
+
   {
     path: 'OrdenProcesos/Index',
     element: <OrdenProcesosIndex />,
@@ -229,26 +233,6 @@ const routes = [
   {
     path: 'Planificacion/Index',
     element: <CalendarApp />,
-  },
-  {
-    path: 'Maquinas/Index',
-    element: <MaquinasIndex />,
-  },
-  {
-    path: 'Modulo/Index',
-    element: <ModuloIndex />,
-  },
-  {
-    path: 'Procesos/Index',
-    element: <ProcesosIndex />,
-  },
-  {
-    path: 'Marcas/Index',
-    element: <MarcasIndex />,
-  },
-  {
-    path: 'ModelosMaquinas/Index',
-    element: <ModelosMaquinaIndex />,
   },
   {
     path: 'OrdenPedido/Index',
@@ -267,14 +251,6 @@ const routes = [
     element: <PedidosProduccion_Crear />,
   },
   {
-    path: 'Modelos/Index',
-    element: <ModelosIndex />,
-  },
-  {
-    path: 'Tallas/Index',
-    element: <TallasIndex />,
-  },
-  {
     path: 'OrdenCompra/Index',
     element: <OrdenCompraIndex />,
   },
@@ -287,9 +263,10 @@ const routes = [
     element: <ReportesModulo />,
   },
   {
-    path: 'Roles/Editar',
-    element: <RolesEditar />,
+    path: 'TipoIntermediario/Index',
+    element: <TipoIntermediario />,
   },
+
 ];
 
 export default routes;

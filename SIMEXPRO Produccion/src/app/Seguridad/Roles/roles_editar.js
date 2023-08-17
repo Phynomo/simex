@@ -1,8 +1,8 @@
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { ToastSuccess, ToastWarning, ToastError } from 'src/styles/toastsFunctions';
 import Collapse from '@mui/material/Collapse';
 import * as React from 'react';
 import Grid from '@mui/material/Grid';
@@ -25,6 +25,8 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import History from 'src/@history/@history';
 import { useLocation } from 'react-router-dom';
 import { forEach, values } from 'lodash';
+import PantallasServices from '../Pantallas/PantallasService';
+import RolesServices from './rolesservice';
 
 
 function not(a, b) {
@@ -42,34 +44,14 @@ function RolesEditar() {
     const [right, setRight] = React.useState([]);
     const leftChecked = intersection(checked, left);
     const rightChecked = intersection(checked, right);
-    const [mostrarPantalla, setMostrarPantallas] = useState(false);
     const location = useLocation();
     const { role, nombre, pantallas } = location.state;
-    const [PantallasSeleccionads, setPantallasSeleccionads] = useState([]);
     const [descripcion, setDescripcion] = useState(nombre);
-    console.log(nombre)
-    let RolesViewModel = {
-        role_Descripcion: descripcion,
-        role_Aduana: true,
-        pant_Ids: [],
-        usua_UsuarioCreacion: 1,
-        role_FechaCreacion: null
-    }
-
-
-
 
     //Constante de los datos que serán requeridos para el formulario
     const RolesSchema = yup.object().shape({
         role_Descripcion: yup.string().required(),
     });
-
-
-    //Constante de los datos por defecto que tendran los formulario
-    const DefaultRolesValues = {
-        role_Descripcion: "",
-    };
-
     const Navigate = useNavigate();
 
 
@@ -90,31 +72,27 @@ function RolesEditar() {
     const handleAllRight = () => {
         setRight(right.concat(left));
         setLeft([]);
-        console.log(right)
     };
 
     const handleCheckedRight = () => {
         setRight(right.concat(leftChecked));
         setLeft(not(left, leftChecked));
         setChecked(not(checked, leftChecked));
-        console.log(right)
     };
 
     const handleCheckedLeft = () => {
         setLeft(left.concat(rightChecked));
         setRight(not(right, rightChecked));
         setChecked(not(checked, rightChecked));
-        console.log(right)
     };
 
     const handleAllLeft = () => {
         setLeft(left.concat(right));
         setRight([]);
-        console.log(right)
     };
 
     const customList = (items) => (
-        <Paper sx={{ width: 200, height: 230, overflow: 'auto' }}>
+        <Paper sx={{ width: 350, height: 250, overflow: 'auto', borderColor: '#c6b1c9', borderWidth: 1, borderStyle: 'solid' }}>    
             <List dense component="div" role="list">
                 {items.map((value) => {
                     const pant_Id = `transfer-list-item-${value.id}-label`;
@@ -146,245 +124,85 @@ function RolesEditar() {
 
 
     useEffect(() => {
-        PickListPantallas()
-
+        setValue('role_Descripcion', nombre)
+        ListadoPantallasLeft()
+        ListadoPantallasRight()
     }, []);  //Constante para cargar datos a las tablas      
 
 
-
-    const PickListPantallas = async () => {
+    const ListadoPantallasLeft = async () => {
         try {
-            const customHeaders = {
-                'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-            };
-            const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Pantallas/Listar', {
-                headers: customHeaders,
-            });
-            const seleccionadas = [];
-
-
-            const rows = response.data.data.map((item, index) => {
-
-                location.state.pantallas.forEach(function (pantalla) {
-                    if (item.pant_Id === pantalla.pant_Id) {
-                        seleccionadas[index] = {
-                            key: pantalla.key,
-                            pant_Id: pantalla.pant_Id,
-                            pant_Nombre: pantalla.pant_Nombre
-                        }
-                    }
-
-                });
-
-                return {
-                    key: index,
-                    pant_Id: item.pant_Id,
-                    pant_Nombre: item.pant_Nombre,
-                }
-            });
-
-            const resultado = rows.filter(objeto2 => {
-                return !seleccionadas.some(objeto1 => objeto1.pant_Id === objeto2.pant_Id);
-            });
-
-
-            setRight(seleccionadas);
-            setLeft(resultado);
-
+            setLeft(await PantallasServices.ListadoPantallasLeft(pantallas))
         } catch (error) {
-            console.log(error);
+            console.log(error.message);
+        }
+    };
 
+    const ListadoPantallasRight = async () => {
+        try {
+            setRight(await PantallasServices.ListadoPantallasRight(pantallas))
+        } catch (error) {
+            console.log(error.message);
         }
     };
 
 
 
-    const ToastWarning = () => {
-        toast.warning("No se permiten campos vacios.", {
-            theme: "dark",
-            //  position: toast.POSITION.BOTTOM_RIGHT
-            style: {
-                marginTop: "50px",
-            },
-            autoClose: 1500,
-            closeOnClick: true,
-        });
-    };
 
+    const RolesViewModel = {
+        role_Descripcion: "",            
+    };
 
 
 
     //Constante que nos ayuda para las validaciones con yup para los formularios
-    const { register, reset, control, watch, formState } = useForm({
-        DefaultRolesValues,
+    const { handleSubmit, control, watch, formState, setValue } = useForm({
+        RolesViewModel,
         mode: "all",
         resolver: yupResolver(RolesSchema),
     });
 
-    const { isValid, dirtyFields, errors } = formState;
+    const { errors, isValid } = formState;
 
+    const RolesModelo = watch();
 
-    const EditarRegistro = () => {
+    const EditarRol = async () => {
         const formData = watch();
-       formData.role_Descripcion = descripcion;
-        if (formData && formData.role_Descripcion) {
-            EditarRol(formData);
-        } else {
-            console.log("Role Descripcion is missing in formData.");
-        }
-    };
-    
+        const response = await RolesServices.EditarRoles(role, formData, right)
+        return response
+    }
 
-
-    // Variables para validar campos
-    const RoleValidar = (role_Descripcion) => {
-        if (!role_Descripcion) {
-            return true;
+    const EditarRoles = async () => {
+        if (isValid) {
+            if (right.length === 0) {
+                ToastWarning('Seleccione al menos una pantalla.')
+            }
+            else {
+                const response = await EditarRol();
+                if (response.data.data.messageStatus == 1) {
+                    ToastSuccess('Registro editado exitosamente.')
+                    History.push("/Roles/Index")
+                }
+                else if (response.data.data.messageStatus.includes('UNIQUE')) {
+                    ToastInfo('El registro ya existe')
+                }
+                else {
+                    ToastError('Ha ocurrido un error.')
+                }
+            }
         }
         else {
-            return false;
+            ToastWarning('Hay campos vacios.')
         }
-    };
-
-
-    const ToastSuccess = () => {
-        toast.success('Datos editados correctamente.', {
-            theme: 'dark',
-            //  position: toast.POSITION.BOTTOM_RIGHT
-            style: {
-                marginTop: '50px'
-            },
-            autoClose: 1500,
-            closeOnClick: true
-        });
     }
-
-
-    const ToastError = () => {
-        toast.error('Ha ocurrido un error.', {
-
-            //  position: toast.POSITION.BOTTOM_RIGHT
-            style: {
-                marginTop: '50px',
-                backgroundColor: '#111827',
-                color: 'white',
-                fill: 'white'
-
-            },
-            autoClose: 5000,
-            closeOnClick: true
-        });
-    }
-    const ToastInfo = () => {
-        toast.info('La descripción ya existe.', {
-
-            //  position: toast.POSITION.BOTTOM_RIGHT
-            style: {
-                marginTop: '50px',
-                backgroundColor: '#111827',
-                color: 'white',
-                fill: 'white'
-
-            },
-            autoClose: 5000,
-            closeOnClick: true
-        });
-    }
-    const RolesValidacion = () => {
-        toast.error('Asegúrese de selccionar al menos una pantalla.', {
-
-            //  position: toast.POSITION.BOTTOM_RIGHT
-            style: {
-                marginTop: '50px',
-                backgroundColor: '#111827',
-                color: 'white',
-                fill: 'white'
-
-            },
-            autoClose: 5000,
-            closeOnClick: true
-        });
-    }
-
-
-    const EditarRol = (data) => {
-        // Validación de campos
-        const ErroresArray = [RoleValidar(data.role_Descripcion)];
-        console.log(data.role_Descripcion);
-
-        let errors = 0;
-        for (let i = 0; i < ErroresArray.length; i++) {
-            if (ErroresArray[i] === true) {
-                errors++;
-            }
-        }
-
-        if (errors > 0) {
-            ToastWarning();
-        } else {
-            if (right.length === 0) {
-                RolesValidacion();
-            } else {
-                const pant_Ids = {
-                    pantallas: right.map((item) => ({ pant_Id: item.pant_Id })),
-                };
-
-                const jsonPantIds = JSON.stringify(pant_Ids);
-
-                console.log(jsonPantIds);
-
-                let values = {
-                    role_Id: location.state.role,
-                    role_Descripcion: data.role_Descripcion,
-                    role_Aduana: true,
-                    pant_Ids: jsonPantIds,
-                    usua_UsuarioModificacion: 1,
-                    role_FechaModificacion: new Date(),
-                };
-
-                console.log(data.role_Descripcion); // Acceder al valor del campo
-
-                const customHeaders = {
-                    'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-                };
-
-                axios.post(process.env.REACT_APP_API_URL + 'api/Roles/Editar', values, {
-                    headers: customHeaders,
-                })
-                    .then(response => {
-                        console.log(response, "respuesta");
-                        if (response.data != null) {
-                            if (response.data.data.messageStatus === "1") {
-                                ToastSuccess();
-
-                                // Redirige después de 1500 ms (1.5 segundos)
-                                setTimeout(() => {
-                                    Navigate('/Roles/RolesIndex');
-                                }, 2000);
-                            } else {
-                                if (response.data.data.messageStatus.includes("Violation of UNIQUE KEY constraint 'UQ_acce_tbRoles_role_Descripcion'.")) {
-                                    ToastInfo();
-                                }
-                            }
-                        } else {
-                            console.log("eaeaea");
-                        }
-                    })
-                    .catch(error => {
-                        console.log(error);
-                    });
-            }
-        }
-    };
-
-
 
 
 
 
     return (
+        <form onSubmit={handleSubmit((_data) => { })}>
+
         <Card sx={{ minWidth: 275, margin: '40px' }}>
-            <ToastContainer />
             <CardMedia
                 component="img"
                 height="200"
@@ -411,7 +229,7 @@ function RolesEditar() {
                                     variant="outlined"
                                     error={!!errors.role_Descripcion}
                                     fullWidth={true}
-                                    value={descripcion}
+                                    value={RolesModelo['role_Descripcion']}
                                     // Utiliza field.onChange para actualizar el estado
                                     onChange={(e) => {
                                         field.onChange(e); // Actualiza el valor en el Controller
@@ -500,7 +318,7 @@ function RolesEditar() {
                                 backgroundColor: '#634A9E', color: 'white',
                                 "&:hover": { backgroundColor: '#6e52ae' },
                             }}
-                            onClick={EditarRegistro}                      >
+                            onClick={EditarRoles}                          >
                             Guardar
                         </Button>
                     </Stack>
@@ -516,7 +334,7 @@ function RolesEditar() {
                                 "&:hover": { backgroundColor: '#b69999' },
                             }}
                             onClick={(e) => {
-                                Navigate("/Roles/RolesIndex");
+                                Navigate("/Roles/Index");
                             }}
                         >
                             Cancelar
@@ -529,6 +347,7 @@ function RolesEditar() {
 
 
         </Card>
+        </form>
     )
 }
 

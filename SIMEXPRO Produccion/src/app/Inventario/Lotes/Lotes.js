@@ -18,6 +18,7 @@ import {
   Typography,
   Select,
   Grid,
+  CircularProgress, 
   GridToolbar,
   Stack,
   Button,
@@ -29,7 +30,9 @@ import {
   TextField,
   esES,
   FormLabel,
-  Autocomplete 
+  Autocomplete,
+  Divider,
+  Chip,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import * as yup from "yup";
@@ -40,6 +43,134 @@ import { Badge, Dropdown, Space, Table } from "antd";
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+import LotesService from "./LotesService";
+
+//toasts
+//Exitoso
+const toastSuccess = (message) => {
+  toast.success(message, {
+    theme: 'dark',
+    style: {
+      //Color gris oscuro
+      // backgroundColor: '#282c34' 
+      //Color del menu
+      backgroundColor: '#111827'
+    },
+    autoClose: 1500,
+    closeOnClick: true
+  });
+}
+//Advertencia
+const toastWarning = (message) => {
+  toast.warning(message, {
+    theme: 'dark',
+    style: {
+      //Color gris oscuro
+      // backgroundColor: '#282c34' 
+      //Color del menu
+      backgroundColor: '#111827'
+    },
+    autoClose: 1500,
+    closeOnClick: true
+  });
+}
+//Error
+const toastError = (message) => {
+  toast.error(message, {
+    theme: 'dark',
+    style: {
+      //Color gris oscuro
+      // backgroundColor: '#282c34' 
+      //Color del menu
+      backgroundColor: '#111827'
+    },
+    autoClose: 1500,
+    closeOnClick: true
+  });
+}
+//default
+const toastDefault = (message) => {
+  toast(message, {
+    theme: 'dark',
+    style: {
+      //Color gris oscuro
+      // backgroundColor: '#282c34' 
+      //Color del menu
+      backgroundColor: '#111827'
+    },
+    autoClose: 1500,
+    closeOnClick: true
+  });
+}
+
+
+const defaultAccountValues = {
+  id: "",
+  material: '',
+  unidadmedida: '',
+  pedidoordendetalle: '',
+  stock: 0,
+  cantidadIngresada: 0,
+  observaciones: "",
+  tipoarea: '',
+};
+
+const accountSchema = yup.object().shape({
+  id: yup.string(),
+  material: yup.string().required(''),
+  unidadmedida: yup.string().required(''),
+  producto: yup.string().required(''),
+  stock: yup.string().required(""),
+  cantidadIngresada: yup.string().required(""),
+  observaciones: yup.string().required(""),
+  tipoarea: yup.string().required('')
+});
+
+const iconStyle = {
+  marginRight: "5px",
+  verticalAlign: "middle",
+  color: "#634a9e",
+};
+
+const tableRowStyle = {
+  "&:hover": {
+    backgroundColor: "coral",
+  },
+};
+
+const tableCellStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+};
+
+const tableHeaderStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+  backgroundColor: "#f2f2f2",
+};
+
+const loadingIcon = (
+  <>
+    <Grid
+      container
+      spacing={2}
+      display={"flex"}
+      justifyContent={"center"}
+      alignContent={"center"}
+    >
+      <Grid item xs={12}>
+        <CircularProgress style={{ color: "#634a9e" }} />
+      </Grid>
+      <Grid item xs={12}>
+        Cargando...
+      </Grid>
+    </Grid>
+  </>
+);
 
 function LotesIndex() {
   //Constante para la busqueda del datatable

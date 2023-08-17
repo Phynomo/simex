@@ -21,7 +21,7 @@ class JwtService extends FuseUtils.EventEmitter {
         return new Promise((resolve, reject) => {
           if (err.response.status === 401 && err.config && !err.config.__isRetryRequest) {
             // if you ever get an unauthorized response, logout the user
-            this.emit('onAutoLogout', 'Invalid access_token');
+            this.emit('onAutoLogout', 'No se pudo iniciar sesión');
             this.setSession(null);
           }
           throw err;
@@ -37,7 +37,7 @@ class JwtService extends FuseUtils.EventEmitter {
       this.emit('onNoAccessToken');
 
       return;
-    }else{
+    } else {
       this.setSession(access_token);
       this.emit('onAutoLogin', true);
     }
@@ -65,13 +65,18 @@ class JwtService extends FuseUtils.EventEmitter {
       }
 
       axios
-        .post(process.env.REACT_APP_API_URL+`api/Usuarios/Login`, dataPeticion)
+        // .post(`${process.env.REACT_APP_API_URL}api/Usuarios/Login`, dataPeticion)
+        .post(`api/Usuarios/Login`, dataPeticion)
         .then(response => {
           if (response.data.data) {
             let user = {
               "uuid": response.data.data['usua_Id'],
               "from": "Phynomo.net",
-              "role": "admin",
+              // "role": response.data.data['role_Descripcion'],
+              "role": 'admin',
+              "roleId": response.data.data['role_Id'],
+              "esAdmin": response.data.data['usua_EsAdmin'],
+              "esAduana": response.data.data['empl_EsAduana'],
               "data": {
                 "displayName": response.data.data['usua_Nombre'],
                 "photoURL": response.data.data['usua_Image'],
@@ -91,10 +96,10 @@ class JwtService extends FuseUtils.EventEmitter {
             resolve(user);
             this.emit('onLogin', user);
           } else {
-            reject(null);
+            reject(response);
           }
         }).catch = (error) => {
-          reject(null);
+          reject(error);
         };
     });
   };
@@ -110,13 +115,19 @@ class JwtService extends FuseUtils.EventEmitter {
       }
 
       axios
-      .post(process.env.REACT_APP_API_URL+`api/Usuarios/Login`, dataPeticion)
+      .post(`${process.env.REACT_APP_API_URL}api/Usuarios/Login`, dataPeticion)
+      // .post(`api/Usuarios/Login`, dataPeticion)
       .then(response => {
+        console.log(response)
           if (response.data.data) {
             let user = {
               "uuid": response.data.data['usua_Id'],
               "from": "Phynomo.net",
-              "role": "admin",
+              // "role": response.data.data['role_Descripcion'],
+              "role": 'admin',
+              "roleId": response.data.data['role_Id'],
+              "esAdmin": response.data.data['usua_EsAdmin'],
+              "esAduana": response.data.data['empl_EsAduana'],
               "data": {
                 "displayName": response.data.data['usua_Nombre'],
                 "photoURL": response.data.data['usua_Image'],
@@ -132,7 +143,7 @@ class JwtService extends FuseUtils.EventEmitter {
                 ]
               }
             }
-            this.setSession(this.encriptador(datos[0] + 'pñwerpaphaperyasevnolapoenmegrnadeo' + datos[1] + 'pñwerpaphaperyasevnolapoenmegrnadeo' + datos[2]));
+            this.setSession(this.encriptador(datos[0] + 'pñwerpaphaperyasevnolapoenmegrnadeo' + datos[1] + 'pñwerpaphaperyasevnolapoenmegrnadeo' + response.headers['authorization']));
             // this.setSession(response.data.access_token);
             resolve(user);
           } else {
@@ -156,10 +167,10 @@ class JwtService extends FuseUtils.EventEmitter {
   setSession = (access_token) => {
     if (access_token) {
       localStorage.setItem('jwt_access_token', access_token);
-      axios.defaults.headers.common.Authorization = `Bearer ${access_token}`;
+      // axios.defaults.headers.common.Authorization = `Bearer ${access_token}`;
     } else {
       localStorage.removeItem('jwt_access_token');
-      delete axios.defaults.headers.common.Authorization;
+      // delete axios.defaults.headers.common.Authorization;
     }
   };
 
@@ -201,8 +212,41 @@ class JwtService extends FuseUtils.EventEmitter {
     const decrypted = CryptoJS.AES.decrypt(Encriptado, key, { iv }).toString(CryptoJS.enc.Utf8);
     return decrypted;
   }
+
+  extraerToken() {
+    const getToken = this.getAccessToken();
+    if (getToken) {
+      let token = this.desencriptador(getToken).split('pñwerpaphaperyasevnolapoenmegrnadeo');
+      return this.desencriptador(token[2]);
+    } else {
+      return '';
+    }
+  }
+  formatFechaHora = (date) => {
+    const year = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const dia = String(date.getDate()).padStart(2, '0');
+    const hora = String(date.getHours()).padStart(2, '0');
+    const minutos = String(date.getMinutes()).padStart(2, '0');
+    const segundos = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${mes}-${dia}T${hora}:${minutos}:${segundos}`;
+};
+
+  formatFechaHora = (date) => {
+    const year = date.getFullYear();
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const dia = String(date.getDate()).padStart(2, '0');
+    const hora = String(date.getHours()).padStart(2, '0');
+    const minutos = String(date.getMinutes()).padStart(2, '0');
+    const segundos = String(date.getSeconds()).padStart(2, '0');
+
+    return `${year}-${mes}-${dia}T${hora}:${minutos}:${segundos}`;
+  }
+
 }
 
 const instance = new JwtService();
 
 export default instance;
+//ejecuta

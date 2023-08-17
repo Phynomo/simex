@@ -22,70 +22,82 @@ import {
   IconButton,
   InputAdornment,
   InputLabel,
-  Zoom,
-  Switch,
-  FormControlLabel,
-  Grow,
   TextField,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Checkbox,
-  Paper
 } from "@mui/material";
-import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
 import { useState } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
 import { Navigate, useNavigate } from 'react-router-dom';
 import * as yup from "yup";
-import { yupResolver } from "@hookform/resolvers/yup";
-import Swal from "sweetalert2";
-import { useForm, Controller } from "react-hook-form";
-import { Badge, Dropdown, Space, Table } from "antd";
+import { Table } from "antd";
 import { useEffect } from 'react';
-import axios from 'axios';
-import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Divider from '@mui/material/Divider';
 import Chip from '@mui/material/Chip';
 import History from 'src/@history/@history';
+import RolesServices from './rolesservice';
+import { useForm, Controller } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import 'react-toastify/dist/ReactToastify.css';
+import { ToastSuccess, ToastWarning, ToastError, ToastDefault, ToastInfo } from 'src/styles/toastsFunctions';
 
-
-
-
-function not(a, b) {
-  return a.filter((value) => b.indexOf(value) === -1);
+const defaultRolesValues = {
+  id: '',
+  role_Descripcion: '',
 }
 
-function intersection(a, b) {
-  return a.filter((value) => b.indexOf(value) !== -1);
-}
+const RolesSchema = yup.object().shape({
+  role_Id: yup.string(),
+  role_Descripcion: yup.string().required(''),
+
+})
+
+const iconStyle = {
+  marginRight: "5px",
+  verticalAlign: "middle",
+  color: "#634a9e",
+};
+
+const tableRowStyle = {
+  "&:hover": {
+    backgroundColor: "coral",
+  },
+};
+
+const tableCellStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+};
+
+const tableHeaderStyle = {
+  verticalAlign: "middle",
+  padding: "15px",
+  textAlign: "left",
+  borderBottom: "1px solid #ddd",
+  backgroundColor: "#f2f2f2",
+};
 
 function RolesIndex() {
   const [DataTabla, setDataTabla] = useState([])
-  const [detallespants, setdetallespants] = useState([])
-
-  const Navigate = useNavigate();
+  const [DatosDetalles, setDatosDetalles] = useState({});
   const [searchText, setSearchText] = useState('');
   const [mostrarIndex, setmostrarIndex] = useState(true);
-  const [mostrarAdd, setmostrarAdd] = useState(false);
   const [Eliminar, setEliminar] = useState(false);
-  const [role, setId] = useState("");
   const [filas, setFilas] = React.useState(10);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
-  const [role_Id, setRole_Id] = useState("");
-  const [role_Descripcion, setrole_Descripcion] = useState("");
+  const Navigate = useNavigate();
 
 
-  //Campos de Auditoria
-  const [usuarioCreacion, setUsuarioCreacion] = useState("");
-  const [usuraioModificador, setUsuarioModificador] = useState("");
-  const [FechaCreacion, setFechaCreacion] = useState();
-  const [FechaModificacion, setModificacion] = useState();
-  const FechaCreacionForm = new Date(FechaCreacion).toLocaleString();
+  //Constante para el cerrrar las opciones del boton de opciones
+  const handleClose = (codigo) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [codigo]: null,
+    }));
+  };
 
-
+  //Constante para el editar de los registros y que de un solo me lleve los datos que necesito
   const handleEdit = (id, descripcion, detalles) => {
     const datosEditar = {
       role: id,
@@ -93,15 +105,16 @@ function RolesIndex() {
       pantallas: detalles
     };
     History.push("Roles/Editar", datosEditar);
-    console.log(datosEditar)
   };
 
   //Constante abrir el collapse de los detalles de la pantalla
-  const handleDetails = (role_Id) => {
-    DetallesTabla(role_Id);
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos)
     MostrarCollapseDetalles();
-    handleClose(role_Id);
+    handleClose(datos.role_Id);
   };
+
+
   //Constante para mostrar el collapse de detalles un registro
   const MostrarCollapseDetalles = () => {
     setmostrarIndex(!mostrarIndex);
@@ -113,39 +126,7 @@ function RolesIndex() {
     setmostrarIndex(!mostrarIndex);
     setmostrarDetalles(!mostrarDetalles);
   }
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
 
-
-
-  const DialogEliminar = () => {
-    setEliminar(!Eliminar);
-  };
 
   //Constante que detecta el cambio de las filas que se mostraran en el index
   const handleChange = (event) => {
@@ -161,159 +142,62 @@ function RolesIndex() {
     }));
   };
 
-  /*const handleDelete = (id) => {
-    setId(id);
-    DialogEliminar();
-    handleClose(id);
-  };*/
 
-
-  const ToastError = () => {
-    toast.error("Ocurrió un error.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  const ToastInfo = () => {
-    toast.info("El rol que desea eliminar está en uso.", {
-      theme: "dark",
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  //Constante ToastSuccess para Eliminar 
-  const ToastSuccessEliminar = () => {
-    toast.success("Registro eliminado correctamente.", {
-      theme: "dark",
-      style: {
-        marginTop: "50px",
-      },
-      autoClose: 1500,
-      closeOnClick: true,
-    });
-  };
-
-  const deleteEmpleado = async () => {
-    const payload = {
-      role_Id: role,
-      role_FechaEliminacion: new Date(),
-      usua_UsuarioEliminacion: 1,
-    };
-
-    const customHeaders = {
-      XApiKey: "4b567cb1c6b24b51ab55248f8e66e5cc",
-    };
-
-    const response = await axios.post(
-
-      process.env.REACT_APP_API_URL + `/api/Roles/Eliminar`,
-      payload,
-
-      {
-        headers: customHeaders,
-      }
-    );
-    if (response.data.data != null && response.data.data.messageStatus === "1"
-    ) {
-      ToastSuccessEliminar();
-      TablaRoles()
-      DialogEliminar();
-    }
-    else if (response.data.data.messageStatus === "0") {
-      ToastInfo();
-      DialogEliminar();
-    }
-    else {
-      ToastError();
-      DialogEliminar();
-    }
-  };
+  //Constante para tomar los valores
+  const { watch, setValue } = useForm({
+    defaultRolesValues,
+    mode: 'all',
+    resolver: yupResolver(RolesSchema),
+  });
+  const datosWatch = watch();
 
 
 
-
-  //Constante para el cerrrar las opciones del boton de opciones
-  const handleClose = (codigo) => {
-    setAnchorEl((prevState) => ({
-      ...prevState,
-      [codigo]: null,
-    }));
-  };
-
+  //Constante para cargar datos a las tablas      
   useEffect(() => {
-    TablaRoles()
-  }, []);  //Constante para cargar datos a las tablas      
+    ListadoRoles()
+  }, []);
 
-
-
-
-  const TablaRoles = async () => {
+  //Constante del listado de la tabla
+  const ListadoRoles = async () => {
     try {
-      const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      const response = await axios.get(process.env.REACT_APP_API_URL + 'api/Roles/Listar', {
-        headers: customHeaders,
-      });
-      console.log(response)
-      const rows = response.data.data.map((item, index) => {
-        const detallesJson = JSON.parse(item.detalles)
-        let detalles = null
-        if (detallesJson) {
-          detalles = detallesJson.map((datos, index2) => {
-            return {
-              key: index2,
-              pant_Id: datos['pant_Id'],
-              pant_Nombre: datos['pant_Nombre'],
-            }
-          })
-
-        }
-        return {
-          key: index,
-          role_Id: item.role_Id,
-          role_Descripcion: item.role_Descripcion,
-          aduanero: item.aduanero,
-          detalles: detalles,
-          usuarioCreacion: item.usuarioCreacionNombre,
-          FechaCreacion: item.role_FechaCreacion,
-          usuraioModificador: item.usuarioModificadorNombre,
-          FechaModificacion: item.role_FechaModificacion
-        }
-      });
-      setDataTabla(rows);
+      setDataTabla(await RolesServices.ListadoRoles())
     } catch (error) {
-
+      console.log(error.message);
     }
   };
 
 
-  //Constante para el detalle de las pantallas
-  const DetallesTabla = (role_Id) => {
-    const Detalles = DataTabla.find((registro) => registro.role_Id === role_Id);
-
-    setRole_Id(Detalles.role_Id);
-    setrole_Descripcion(Detalles.role_Descripcion);
-    setUsuarioCreacion(Detalles.usuarioCreacion);
-    setUsuarioModificador(Detalles.usuraioModificador);
-    setFechaCreacion(Detalles.FechaCreacion);
-    setModificacion(Detalles.FechaModificacion);
-    setdetallespants(Detalles.detalles);
+  //Constante para tomar el id del menu
+  const handleDelete = (data) => {
+    setValue('id', data['role_Id'])
+    DialogEliminar();
+    handleClose(data['role_Id']);
   };
 
+  //Constante para cerrar el modal de eliminar
+  const DialogEliminar = () => {
+    setEliminar(!Eliminar);
+  };
 
+  //Constante pata la eliminacion de los roles 
+  const EliminarRoles = async () => {
+    try {
+      const response = (await RolesServices.EliminarRoles(datosWatch))
+      if (response.data.data.messageStatus == '1') {
+        ToastSuccess('El registro se ha eliminado exitosamente')
+        ListadoRoles();
+        DialogEliminar();
+      }
+      else if (response.data.data.messageStatus == '0') {
+        DialogEliminar();
+        ToastInfo('El registro que desea eliminar está en uso.')
 
+      }
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
 
   //Constante para el boton de opciones
   const [anchorEl, setAnchorEl] = useState({});
@@ -321,9 +205,9 @@ function RolesIndex() {
   //Constante de las columnas del index
   const columns = [
     {
-      title: "ID",
-      dataIndex: "role_Id",
-      key: "role_Id",
+      title: "#",
+      dataIndex: "key",
+      key: "key",
       sorter: (a, b) => a.role_Id - b.role_Id, //sorting para Numeros
     },
     {
@@ -331,12 +215,6 @@ function RolesIndex() {
       dataIndex: "role_Descripcion",
       key: "role_Descripcion",
       sorter: (a, b) => a.role_Descripcion.localeCompare(b.role_Descripcion), //sorting para Letras
-    },
-    {
-      title: "Aduanero",
-      dataIndex: "aduanero",
-      key: "aduanero",
-      sorter: (a, b) => a.aduanero.localeCompare(b.aduanero), //sorting para Letras
     },
 
     {
@@ -369,10 +247,10 @@ function RolesIndex() {
               <MenuItem onClick={() => handleEdit(params.role_Id, params.role_Descripcion, params.detalles)}>
                 <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.role_Id, params.role_Descripcion, params.detalles)}>
+              <MenuItem onClick={() => handleDetails(params)}>
                 <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.role_Id)}>
+              <MenuItem onClick={() => handleDelete(params)}>
                 <Icon>delete</Icon>ㅤEliminar
               </MenuItem>
             </Menu>
@@ -383,12 +261,12 @@ function RolesIndex() {
   ];
 
 
-
+  //Constantes para los campos de la Tabla Maestra
   const columnsExpandable = [
     {
       title: 'ID',
-      dataIndex: 'pant_Id',
-      key: 'pant_Id',
+      dataIndex: 'key',
+      key: 'key',
       sorter: (a, b) => a.pant_Id - b.pant_Id, //sorting para Numeros
     },
     {
@@ -399,63 +277,46 @@ function RolesIndex() {
     }
   ];
 
-
-  {/*Función para mostrar la tabla y mostrar agregar*/ }
-  const VisibilidadTabla = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAdd(!mostrarAdd);
-  };
-
-  const handleSearchChange = (event) => {
-    setSearchText(event.target.value);
-  };
-
   //Constantes de los campos que se utilizaran para filtrar datos
   const camposToFilter = ["role_Id", "role_Descripcion", "pant_Nombre", "ropa_Id"];
 
+  //Constantes que ayuda a filtrar el datatable
   const filteredRows = DataTabla.filter((row) => {
     if (searchText === "") {
-      return true;  // Mostrar todas las filas si el buscador está vacío
+      return true; // Mostrar todas las filas si el buscador está vacío
     }
 
-    // Filtrar campos del maestro
     for (const [key, value] of Object.entries(row)) {
       if (camposToFilter.includes(key)) {
-        const formattedValue = typeof value === 'number' ? value.toString() : value.toString().toLowerCase();
-        const formattedSearchText = typeof searchText === 'number' ? searchText.toString() : searchText.toLowerCase();
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
         if (formattedValue.includes(formattedSearchText)) {
           return true;
         }
       }
     }
-
-    // Filtrar campos de los detalles si existen
-    if (row.detalles) {
-      const detalles = row.detalles;
-
-      for (const [key, value] of Object.entries(detalles)) {
-        if (camposToFilter.includes(`detalle_${key}`)) {
-          const formattedValue = typeof value === 'number' ? value.toString() : value.toString().toLowerCase();
-          const formattedSearchText = typeof searchText === 'number' ? searchText.toString() : searchText.toLowerCase();
-          if (formattedValue.includes(formattedSearchText)) {
-            return true;
-          }
-        }
-      }
-    }
-
     return false;
   });
-
-  const columnStyles = {
-    columnCount: 3,
-    columnGap: '20px',
+  const handleSearchChange = (event) => {
+    setSearchText(event.target.value);
   };
+
+
+
+
+
+
+
 
 
   return (
     <Card sx={{ minWidth: 275, margin: '40px' }}>
-      <ToastContainer />
       {/* CardMedia para los header de la carta (Imagenes header con nombres de la carta)*/}
       <CardMedia
         component="img"
@@ -485,7 +346,7 @@ function RolesIndex() {
                 "&:hover": { backgroundColor: "#6e52ae" },
               }}
               onClick={(e) => {
-                Navigate("/Roles/RolesCrear");
+                Navigate("/Roles/Crear");
               }}>
               Nuevo
             </Button>
@@ -579,7 +440,7 @@ function RolesIndex() {
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                       Id del Rol:
                     </Typography>
-                    <Typography>{role_Id}</Typography>
+                    <Typography>{DatosDetalles['role_Id']}</Typography>
                   </InputLabel>
                 </Box>
                 <Box sx={{ flex: 1, textAlign: "center", marginLeft: "80px" }}>
@@ -587,7 +448,7 @@ function RolesIndex() {
                     <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
                       Descripción del rol:
                     </Typography>
-                    <Typography>{role_Descripcion}</Typography>
+                    <Typography>{DatosDetalles['role_Descripcion']}</Typography>
                   </InputLabel>
                 </Box>
               </Box>
@@ -602,10 +463,10 @@ function RolesIndex() {
                         <Chip color='default' variant='outlined' label="Pantallas asignadas" />
                       </Divider>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
-                        {detallespants ? (
-                          detallespants.map((pantalla, index) => (
+                        {DatosDetalles['detalles'] ? (
+                          DatosDetalles['detalles'].map((pantalla, index) => (
                             <div key={index} style={{ textAlign: 'center', margin: '0 30px' }}>
-                              {pantalla.pant_Nombre}
+                              ✔ {pantalla.pant_Nombre} 
                             </div>
                           ))
                         ) : (
@@ -625,6 +486,7 @@ function RolesIndex() {
                           </Grid>
                         )}
                       </div>
+
                     </InputLabel>
                   </Box>
                 </Box>
@@ -650,22 +512,27 @@ function RolesIndex() {
                     </th>
                   </tr>
                 </thead>
+
                 <tbody>
                   <tr style={tableRowStyle}>
                     <td style={tableCellStyle}>
                       <strong>Creación</strong>
                     </td>
-                    <td style={tableCellStyle}>{usuarioCreacion}</td>
-                    <td style={tableCellStyle}>{FechaCreacionForm}</td>
+                    <td style={tableCellStyle}>{DatosDetalles['usuarioCreacionNombre']}</td>
+                    <td style={tableCellStyle}>
+                      {DatosDetalles['role_FechaCreacion']
+                        ? new Date(DatosDetalles['role_FechaCreacion']).toLocaleString()
+                        : ""}
+                    </td>
                   </tr>
                   <tr style={tableRowStyle}>
                     <td style={tableCellStyle}>
                       <strong>Modificación</strong>
                     </td>
-                    <td style={tableCellStyle}>{usuraioModificador}</td>
+                    <td style={tableCellStyle}>{DatosDetalles['usuarioModificadorNombre']}</td>
                     <td style={tableCellStyle}>
-                      {FechaModificacion
-                        ? new Date(FechaModificacion).toLocaleString()
+                      {DatosDetalles['role_FechaModificacion']
+                        ? new Date(DatosDetalles['role_FechaModificacion']).toLocaleString()
                         : ""}
                     </td>
                   </tr>
@@ -715,7 +582,7 @@ function RolesIndex() {
                 backgroundColor: '#634A9E', color: 'white',
                 "&:hover": { backgroundColor: '#6e52ae' },
               }}
-              onClick={deleteEmpleado}
+              onClick={EliminarRoles}
             >
               Eliminar
             </Button>

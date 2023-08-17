@@ -1,454 +1,403 @@
-/* eslint-disable no-lone-blocks */
-/* eslint-disable prettier/prettier */
-import React, { useEffect } from 'react'
-import axios from 'axios';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
 import {
+  Card,
+  CardContent,
+  CardMedia,
   Button,
-  ButtonBase,
   FormControl,
   Icon,
   IconButton,
   InputAdornment,
   InputLabel,
   TextField,
-  Avatar,
+  Autocomplete,
+  Divider,
+  Chip,
+  Stack,
+  Collapse,
+  Grid,
+  Typography,
+  Select,
+  Box,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Menu,
+  MenuItem,
+  FormLabel,
 } from "@mui/material";
-import Stack from '@mui/material/Stack';
-import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
-import { useState } from 'react';
-import SearchIcon from '@mui/icons-material/Search';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import Collapse from '@mui/material/Collapse';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Box from '@mui/material/Box'
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import { height } from '@mui/system';
 
-import * as yup from 'yup';
-import { useForm, Controller } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import Swal from 'sweetalert2';
+import * as React from "react";
+import { useState, useEffect } from "react";
+import SearchIcon from "@mui/icons-material/Search";
+import { height } from "@mui/system";
 
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
+//Imports de validaciones
+import * as yup from "yup";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+//Imports tabla
+import { Badge, Dropdown, Space, Table } from "antd";
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+//Import service
+import OficinasServices from "./OficinasService";
+//Import ddls
+import load_DDLs from "src/app/loadDDLs/Load_DDL";
+//import Toast
+import "react-toastify/dist/ReactToastify.css";
+import InputMask from "react-input-mask";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
 
-import { DownOutlined } from '@ant-design/icons';
-import { Badge, Dropdown, Space, Table } from 'antd';
-import { keyBy } from 'lodash';
 
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+const defaultOficinasValues= {
+  ofic_Id: "",
+  ofic_Nombre: "",
+}
 
-function OficinasIndex() {
-  const [searchText, setSearchText] = useState('');
+const accountSchema = yup.object().shape({
+  ofic_Id: yup.string(),
+  ofic_Nombre: yup.string().trim().required(""),
+});
+
+
+function OficinasIndex(){
+  //variable para la barra de busqueda
+  const [searchText, setSearchText] = useState("");
+
+  //Variables para los collapse
   const [mostrarIndex, setmostrarIndex] = useState(true);
-  const [mostrarAgregar, setmostrarAgregar] = useState(false);
-  const [mostrarEditar, setmostrarEditar] = useState(false);
+  const [mostrarAdd, setmostrarAdd] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
+
+  //Variable donde se guardan los datos del detalle seleccionado
+  const [DatosDetalles, setDatosDetalles] = useState({});
+
+  //variable para el dialog(modal) de eliminar
   const [Eliminar, setEliminar] = useState(false);
-  const [id, setId] = useState("");
-  const [oficina, setOficina] = useState("");
 
-  const DetallesTabla = (rowId, oficina) => {
-    setId(rowId);
-    setOficina(oficina);
+  //Variable que indica si el usuario a seleccionar crear o editar
+  const [editar, setEditar] = useState(false);
 
-    //const tableRows = document.querySelectorAll('#detallesTabla tbody tr')
-    // //tableRows[0].cells[1].textContent = localStorage.getItem('dkhadk')
-    // tableRows[1].cells[1].textContent = localStorage.getItem('Registro de prueba');
-    // tableRows[2].cells[2].textContent = localStorage.getItem('Registro de prueba 2');
-    // tableRows[3].cells[3].textContent = localStorage.getItem('Registro de prueba 3');
-    // tableRows[4].cells[4].textContent = localStorage.getItem('Registro de prueba 4');
-    // tableRows[5].cells[5].textContent = localStorage.getItem('Registro de prueba 5');
-    // tableRows[6].cells[6].textContent = localStorage.getItem('Registro de prueba 6');
-    
-  };
-  
+  //Variable que guarda la cantidad de filas a mostrar
+  const [filas, setFilas] = React.useState(10);
+
+  //Variable que hace algo con el menu XD
+  const [anchorEl, setAnchorEl] = useState({});
+
+  /* Datos de la tabla */
+  const [data, setData] = useState([]);
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTabla = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAdd(!mostrarAdd);
+    reset(defaultOficinasValues);
+  }; 
+
+  //Controlador del dialog(modal) eliminar
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
   };
 
-  const [anchorEl, setAnchorEl] = useState({});
+  //Controlador del collapse detalles
+  const CollapseDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+  };
 
+  //controlador de las fillas a mostrar
+  const handleChangeFilas = (event) => {
+    setFilas(event.target.value);
+  };
+
+  //abre el menu al cual se le dio click
   const handleClick = (event, id) => {
-    setAnchorEl(prevState => ({
+    setAnchorEl((prevState) => ({
       ...prevState,
       [id]: event.currentTarget,
     }));
   };
 
+  //Cierra el menu abierto
   const handleClose = (id) => {
-    setAnchorEl(prevState => ({
+    setAnchorEl((prevState) => ({
       ...prevState,
       [id]: null,
     }));
   };
 
-  const handleEdit = (id, oficina) => {
-    // Implementa la función para editar aquí
-    setId(id);
-    setOficina(oficina);
-    MostrarCollapseEditar();
-    handleClose(id);
+  const handleEdit = (datos) => {
+    VisibilidadTabla();
+    setEditar(true);
+    //insertar aca las variables necesarias en su formulario
+    setValue("ofic_Id", datos["ofic_Id"]);
+    setValue("ofic_Nombre", datos["ofic_Nombre"]);
+    handleClose(datos.ofic_Id);
   };
 
-  const handleDetails = (id, oficina) => {
-      // Implementa la función para detalles aquí
-      DetallesTabla(id, oficina);
-      MostrarCollapseDetalles();
-      handleClose(id);
-};
-
- //Constante para mostrar el collapse de agregar un registro
- const MostrarCollapseAgregar = () => {
-  setmostrarIndex(!mostrarIndex);
-  setmostrarAgregar(!mostrarAgregar);
-  reset(defaultOficinasValues);
-};
-  //Constante para mostrar el collapse de editar un registro
-  const MostrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultOficinasValues);
+  //Handle para mostrar los detalles del registro
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos); //se guardan los datos en la variable escrita antes
+    CollapseDetalles();
+    handleClose(datos.ofic_Id);
   };
 
-  //Constante para mostrar el collapse de detalles un registro
-  const MostrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
+  const handleDelete = (datos) => {
+    setValue("ofic_Id", datos["ofic_Id"]);
+    DialogEliminar()
+    handleClose(datos.ofic_Id);
   };
 
-const handleDelete = (id) => {
-  // Implementa la función para eliminar aquí
-  handleClose(id);
-};
-
-  const [filas, setFilas] = React.useState(10);
-
-  const handleChange = (event) => {
-    setFilas(event.target.value);
-  };
-
-  {/* Columnas de la tabla */ }
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
     },
     {
-      title: 'Oficina',
-      dataIndex: 'oficina',
-      key: 'oficina',
-      sorter: (a, b) => a.oficina.localeCompare(b.oficina),
+      title: "Oficina",
+      dataIndex: "ofic_Nombre",
+      key: "ofic_Nombre",
+      sorter: (a, b) => a.ofic_Nombre.localeCompare(b.ofic_Nombre), //sorting para Letras
     },
     {
-      title: 'Acciones',
-      key: 'operation',
-      render: (params) =>
-        <div key={params.id}>
+      title: "Acciones",
+      key: "operation",
+      render: (params) => (
+        <div key={params.ofic_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.ofic_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              onClick={(e) => handleClick(e, params.ofic_Id)}
               variant="contained"
-              style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
+              style={{
+                borderRadius: "10px",
+                backgroundColor: "#634A9E",
+                color: "white",
+              }}
               startIcon={<Icon>menu</Icon>}
             >
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.ofic_Id}`}
+              anchorEl={anchorEl[params.ofic_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.ofic_Id])}
+              onClose={() => handleClose(params.ofic_Id)}
             >
-              <MenuItem onClick={() => handleEdit(params.id, params.oficina)}>
-                <Icon>edit</Icon> Editar
+              <MenuItem onClick={() => handleEdit(params)}>
+                <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id, params.oficina)}>
-                <Icon>visibility</Icon> Detalles
+              <MenuItem onClick={() => handleDetails(params)}>
+                <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => DialogEliminar(params.id)}>
-                <Icon>delete</Icon> Eliminar
+              <MenuItem onClick={() => handleDelete(params)}>
+                <Icon>delete</Icon>ㅤEliminar
               </MenuItem>
             </Menu>
           </Stack>
         </div>
-      ,
+      ),
     },
   ];
 
-    //Constante para ejecutar las validaciones y el envio del formulario en el boton de editar en el collapse de editar
-    const EditarRegistro = () => {
-      const formData = watch();
-      formData.oficina = oficina;
-      ValidacionesEditar(formData);
-      setTimeout(() => {  
-        reset(defaultOficinasValues);
-        handleSubmit(ValidacionesEditar)();
-      }, "250")
-    };
-  
-    //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-    const CerrarEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultOficinasValues);
+  //Controlador de la barra buscadora de la tabla
+  const handleSearchChange = (event) => {
+    setSearchText(event.target.value);
   };
 
-  //Constante para cerrar el collapse de detalles
-  const CerrarDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
+  //Constantes de los campos que se utilizaran para filtrar datos (Ingresar los campos que pusieron en la tabla(Columns))
+  const camposToFilter = ["key", "ofic_Nombre"];
 
-    //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-    const iconStyle = {
-      marginRight: "5px",
-      verticalAlign: "middle",
-      color: "#634a9e",
-    };
-
-     //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
-
-  const defaultOficinasValues = {
-    oficinas: '',
-  }
-
-  const OficinasSchema = yup.object().shape({
-    oficinas: yup.string().required(),
-  })
-
-  const[data, setData] = useState([])
-
-  useEffect(() => {
-    FetchDataOficinas();
-  }, []);
-
-  const FetchDataOficinas = async () => {
-    try {
-      const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-
-      const url = 'https://simexpro.azurewebsites.net/api/Oficinas/Listado';
-      const response = await axios.get(url, {
-        headers: customHeaders,
-      });
-      console.log(response)
-      const rows = response.data.map(item => {
-        return {
-          id: item.ofic_Id,
-          oficina: item.ofic_Nombre,
-        }
-      });
-      setData(rows);
-    } catch (error) {
-      console.log(error.message);
+  //Constante que ayuda a filtrar el datatable
+  const filteredRows = data.filter((row) => {
+    if (searchText === "") {
+      return true; // Mostrar todas las filas si el buscador está vacío
     }
-  };
-  
-    // {/* Datos de la tabla */ }
-    // const data = [];
-    // for (let i = 0; i < 50; ++i) {
-    //   data.push({
-    //     key: i.toString(),
-    //     id: i.toString(),
-    //     oficina: 'oficina ' + i,
-    //     // tabla: [
-    //     //   { key: '1', name: 'Value1' + i, platform: 'Value2' + i },
-    //     //   { key: '2', name: 'Value3' + i, platform: 'Value4' + i },
-    //     //   // Add more rows to the nested table here...
-    //     // ],
-    //   });
-    // }
-  
-    const handleSearchChange = (event) => {
-      setSearchText(event.target.value);
-    };
-  
-    {/* Filtrado de datos */ }
-    const filteredRows = data.filter((row) =>
-      Object.values(row).some((value) =>
-        typeof value === 'string' && value.toLowerCase().includes(searchText.toLowerCase())
-      )
-    );
-  
-  const VisibilidadTabla = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAgregar(!mostrarAgregar);
-  };
 
-  const {handleSubmit, register, reset, control, watch, formState } = useForm({
-    defaultOficinasValues,
-    mode: 'all',
-    resolver: yupResolver(OficinasSchema),
+    for (const [key, value] of Object.entries(row)) {
+      if (camposToFilter.includes(key)) {
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
+        if (formattedValue.includes(formattedSearchText)) {
+          return true;
+        }
+      }
+    }
+    return false;
   });
 
+  //Declaracion del formulario
+  const { handleSubmit, register, reset, control, watch, formState, setValue } =
+    useForm({
+      defaultOficinasValues, //Campos del formulario
+      mode: "all",
+      resolver: yupResolver(accountSchema), //Esquema del formulario
+    });
+
+  //Validacion de campos vacios y errores
   const { isValid, dirtyFields, errors } = formState;
 
-  const ValidacionAgregar = (data) => {
-    if (data.oficinas != null) {
-      if (data.oficinas.trim() === "") {
-        toast.error('Datos no ingresados correctamente.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-      } else {
-        toast.success('Datos ingresados correctamente.', {
-          theme: 'dark',
-          style: {
-            marginTop: '50px'
-          },
-          autoClose: 1500,
-          closeOnClick: true
-        });
-        setTimeout(() => {
-          MostrarCollapseAgregar();
-        }, 100); // Establece un pequeño retraso antes de llamar a MostrarCollapseAgregar
-      }
-    } else {
-      toast.error('Datos no ingresados correctamente.', {
-        theme: 'dark',
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
+  //Datos del formulario
+  const datosWatch = watch();
+
+  //Peticion para cargar datos de la tabla
+  const oficinasGetData = async () => {
+    try {
+      setData(await OficinasServices.listar());
+    } catch (error) {
     }
   };
 
-      //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-      const ValidacionesEditar = (data) => {
-        if (data.oficinas != null) {
-          if (data.oficinas.trim() === "") {
-            toast.error('Datos no ingresados correctamente.', {
-              theme: 'dark',
-              style: {
-                marginTop: '50px'
-              },
-              autoClose: 1500,
-              closeOnClick: true
-            });
-          } else {
-            toast.success('Datos ingresados correctamente.', {
-              theme: 'dark',
-              style: {
-                marginTop: '50px'
-              },
-              autoClose: 1500,
-              closeOnClick: true
-            });
-            setTimeout(() => {
-              MostrarCollapseAgregar();
-            }, 100);
-          }
-        } else {
-          toast.fire({
-            icon: "error",
-            title: "No se permiten campos vacios",
-          });
-        }
-      };
+  //Peticion para crear un registro
+  const OficinasCreate = async () => {
+    try {
+      const response = await OficinasServices.crear(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        oficinasGetData();
+        VisibilidadTabla();
+        reset(defaultOficinasValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      ToastError("Error inesperado");
+    }
+  };
 
-  const AgregarRegistro = () => {
-    const formData = watch();
-    ValidacionAgregar(formData);
-    handleSubmit(ValidacionAgregar)();
-    reset(defaultOficinasValues);
+  // Peticion para editar un registro
+  const OficinasEdit = async () => {
+    try {
+      const response = await OficinasServices.editar(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha editado exitosamente");
+        oficinasGetData();
+        VisibilidadTabla();
+        reset(defaultOficinasValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      ToastError("Error inesperado");
+    }
+  };
+
+  const OficinasDelete = async () => {
+    try{
+      const response = await OficinasServices.eliminar(datosWatch);
+      if(response.data.data.messageStatus == "1"){
+        DialogEliminar();
+        ToastSuccess("El registro ha sido eliminado exitosamente");
+        oficinasGetData();
+        //VisibilidadTabla();
+        reset(defaultOficinasValues);
+      }else if(response.data.data.messageStatus.includes("0")){
+        DialogEliminar();
+        ToastError("El registro está en uso");
+      }
+    }catch (error) {
+      DialogEliminar();
+      ToastError("Error inesperado");
+    }
+  }
+
+  //useEffect para cargar datos al ingresar a la pantalla
+  useEffect(() => {
+    oficinasGetData();
+  }, []);
+
+  //Controlador del formulario
+  const GuardarOficina = () => {
+    if (isValid) {
+      // Validacion de campos completos
+      if (!editar) {
+        // Validacion de la funcion a realizar
+        OficinasCreate();
+      } else {
+        OficinasEdit();
+      }
+    } else {
+      ToastWarning("Completa todos los campos");
+    }
   };
 
   return (
-    <Card sx={{ minWidth: 275, margin: '40px' }}>
-      <ToastContainer />
+    <Card sx={{ minWidth: 275, margin: "40px" }}>
       <CardMedia
         component="img"
         height="200"
         image="https://i.ibb.co/BqmXTJV/OFICINAS.png"
         alt="Encabezado de la carta"
       />
+      {/* Inicio del Collapse incial (Tabla/Index) */}
       <Collapse in={mostrarIndex}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
           {/* Botón de Nuevo */}
           <Stack direction="row" spacing={1}>
             <Button
               startIcon={<Icon>add</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px' }}
+              style={{ borderRadius: "10px" }}
               sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={() => {
+                VisibilidadTabla();
+                setEditar(false);
+              }}
             >
               Nuevo
             </Button>
           </Stack>
 
+          {/* Filtros de la tabla (Filas/Buscar) */}
           <Stack direction="row" spacing={1}>
-            <label className='mt-8'>Filas por página:</label>
+            <label className="mt-8">Filas por página:</label>
             <FormControl sx={{ minWidth: 50 }} size="small">
-              {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
               <Select
                 labelId="demo-select-small-label"
                 id="demo-select-small"
                 value={filas}
-                // label="Filas"  
-                onChange={handleChange}
+                onChange={handleChangeFilas}
               >
                 <MenuItem value={10}>10</MenuItem>
-                <MenuItem value={20}>20</MenuItem>
-                <MenuItem value={30}>30</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
               </Select>
             </FormControl>
 
             {/* Barra de Busqueda en la Tabla */}
             <TextField
-              style={{ borderRadius: '10px' }}
-              placeholder='Buscar'
+              style={{ borderRadius: "10px" }}
+              placeholder="Buscar"
               value={searchText}
               onChange={handleSearchChange}
               size="small"
@@ -463,258 +412,121 @@ const handleDelete = (id) => {
                 ),
               }}
             />
-
           </Stack>
         </CardContent>
-      </Collapse>
 
-
-
-
-      {/* Tabla */}
-      <Collapse in={mostrarIndex}>
-        <div className='center' style={{ width: '95%', margin: 'auto' }}>
-
+        {/* Declaracion de la tabla */}
+        <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
             columns={columns}
-            // expandable={{
-            //   expandedRowRender: (record) => <Table columns={columns} dataSource={record.tabla} pagination={false} />,
-            //   rowExpandable: (record) => record.name !== 'Not Expandable',
-            // }}
             dataSource={filteredRows}
             size="small"
-            pagination={{
-              pageSize: filas
-              , className: 'decoration-white'
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
             }}
-
+            pagination={{
+              pageSize: filas,
+              showSizeChanger: false,
+              className: "custom-pagination",
+            }}
           />
         </div>
       </Collapse>
+      {/* Fin del Collapse incial (Tabla/Index) */}
 
-
-      {/* Formulario Agregar */}
-      <Collapse in={mostrarAgregar}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <Typography variant="h5" gutterBottom>
-              </Typography>
-            </Grid>
-            <Grid item xs={12} >
-            <div className="mt-5 mb-16" style={{ width: '100%'}}>
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      label="Oficinas"
-                      error={!!errors.oficinas}
-                      placeholder='Ingrese el nombre de la Oficina'
-                      fullWidth
-                      InputProps={{startAdornment: (<InputAdornment position="start"></InputAdornment>),}}
-                    />
-                  )}
-                  name="oficinas"
-                  control={control}
-                />
-              </div>
-            </Grid>        
-            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
-                sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
-                }}
-                onClick={AgregarRegistro}
-              >
-                Guardar
-              </Button>
-
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={MostrarCollapseAgregar}
-              >
-                Cancelar
-              </Button>
-            </Grid>
-
-          </Grid>
-        </CardContent>
-      </Collapse>
-
-        {/* Collapse para el formulario de editar un registro inicio*/}
-        <Collapse in={mostrarEditar}>
-            <CardContent
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <Grid container spacing={3}>
-              <Grid item xs={12} >
-                <div className="mt-1 mb-16">
-                    <Controller
-                      render={({ field }) => (
-                        <TextField
-                          {...field}
-                          label="Oficina"
-                          variant="outlined"
-                          error={!!errors.oficinas}
-                          fullWidth
-                          InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                          value={oficina}
-                        />
-                      )}
-                      name="oficinas"
-                      control={control}
-                    />
-                  </div>
-                </Grid>
-
-                <Grid
-                  item
-                  xs={12}
-                  sx={{
-                    display: "flex",
-                    justifyContent: "right",
-                    alignItems: "right",
-                  }}
-                >
-                  <Button
-                    startIcon={<Icon>checked</Icon>}
-                    variant="contained"
-                    color="primary"
-                    style={{ borderRadius: "10px", marginRight: "10px" }}
-                    sx={{
-                      backgroundColor: "#634A9E",
-                      color: "white",
-                      "&:hover": { backgroundColor: "#6e52ae" },
-                    }}
-                    onClick={EditarRegistro}
-                  >
-                    Editar
-                  </Button>
-
-                  <Button
-                    startIcon={<Icon>close</Icon>}
-                    variant="contained"
-                    color="primary"
-                    style={{ borderRadius: "10px" }}
-                    sx={{
-                      backgroundColor: "#DAD8D8",
-                      color: "black",
-                      "&:hover": { backgroundColor: "#BFBABA" },
-                    }}
-                    onClick={CerrarEditar}
-                  >
-                    Cancelar
-                  </Button>
-                </Grid>
+      {/* Inicio del Formulario */}
+      <form onSubmit={handleSubmit((_data) => {})}>
+        <Collapse in={mostrarAdd}> 
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar Oficina" : "Agregar Oficina"}
+                  />
+                </Divider>
               </Grid>
-            </CardContent>
-          </Collapse>
+              <Grid item xs={2}>
+              </Grid>
 
-        {/* Collapse para mostrar los detalles de un registro inicio*/}
-          <Collapse in={mostrarDetalles}>
-            <CardContent
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >   
-            <Grid container spacing={3}> 
-            <Grid item xs={12}>
-                  <h2>Detalles de la Oficina</h2>   
-                  </Grid>   
-                  <Grid item xs={12}>   
-                    <Box sx={{ display: "flex", flexDirection: "row" }}>
-                      <Box sx={{ flex: 1 }}>
-                        <InputLabel htmlFor="id">
-                          <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                            Oficina Id:
-                          </Typography>
-                          <Typography>{id}</Typography>
-                        </InputLabel>
-                        <br></br> 
-                        <InputLabel htmlFor="descripcion">
-                          <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                            Oficina Descripcion:
-                          </Typography>
-                          <Typography>{oficina}</Typography>
-                        </InputLabel>
-                      </Box>
-                    </Box>
-                    </Grid> 
-                    <br></br>   
-                    <Grid item xs={12}>            
-                          <table
-                            id="detallesTabla"
-                            style={{ width: "100%", borderCollapse: "collapse" }}
-                          >
-                            <thead>
-                              <tr>
-                                <th style={tableHeaderStyle}>
-                                  <Icon style={iconStyle}>edit</Icon>Accion
-                                </th>
-                                <th style={tableHeaderStyle}>
-                                  <Icon style={iconStyle}>person</Icon>Usuario
-                                </th>
-                                <th style={tableHeaderStyle}>
-                                  <Icon style={iconStyle}>date_range</Icon>Fecha y
-                                  hora
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr style={tableRowStyle}>
-                                <td style={tableCellStyle}>
-                                  <strong>Creación</strong>
-                                </td>
-                                <td style={tableCellStyle}>Usuario Creación</td>
-                                <td style={tableCellStyle}>00/00/0000</td>
-                              </tr>
-                              <tr style={tableRowStyle}>
-                                <td style={tableCellStyle}>
-                                  <strong>Modificación</strong>
-                                </td>
-                                <td style={tableCellStyle}>Usuario Modificación</td>
-                                <td style={tableCellStyle}>00/00/0000</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                          </Grid> 
-                  <br></br>
-                  <Grid item xs={12}>    
-                  <div className="card-footer">
-                    <Button
-                      variant="contained"
-                      onClick={CerrarDetalles}
-                      startIcon={<Icon>arrow_back</Icon>}
-                    >
-                      Regresar
-                    </Button>
-                  </div>
-                  </Grid>
-                  </Grid>  
-            </CardContent>
-          </Collapse>
-          {/* Collapse para mostrar los detalles de un registro fin*/}
+              <Grid item xs={8}>
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.ofic_Nombre}>Nombre de la Oficina</FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        id="outlined-disabled"
+                        inputProps={{
+                          maxLength: 150,
+                        }}
+                        error={!!errors.ofic_Nombre}
+                      ></TextField>
+                    )}
+                    name="ofic_Nombre"
+                    control={control}
+                  ></Controller>
+                </FormControl>
+              </Grid>
+              <Grid item xs={2}>
+              </Grid>
 
+              <Grid
+                item
+                xs={12}
+                sx={{
+                  display: "flex",
+                  justifyContent: "right",
+                  alignItems: "right",
+                }}
+              >
+                <Button
+                  type="submit"
+                  startIcon={<Icon>checked</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px", marginRight: "10px" }}
+                  sx={{
+                    backgroundColor: "#634A9E",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#6e52ae" },
+                  }}
+                  onClick={GuardarOficina}
+                >
+                  Guardar
+                </Button>
 
+                <Button
+                  startIcon={<Icon>close</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px" }}
+                  sx={{
+                    backgroundColor: "#DAD8D8",
+                    color: "black",
+                    "&:hover": { backgroundColor: "#BFBABA" },
+                  }}
+                  onClick={VisibilidadTabla}
+                >
+                  Cancelar
+                </Button>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Collapse>
+      </form>
+       {/* Fin del Formulario */}
+
+       {/* Inicia del Dialog(Modal) Eliminar */}
       <Dialog
         open={Eliminar}
         fullWidth="md"
@@ -727,41 +539,171 @@ const handleDelete = (id) => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-          ¿Está seguro(a) que desea eliminar este registro?
+            ¿Está seguro(a) que desea eliminar este registro?
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
-                sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
-                }}
-                onClick={DialogEliminar}
-              >
-                Eliminar
-              </Button>
+          <Grid
+            item
+            xs={12}
+            sx={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "right",
+            }}
+          >
+            <Button
+              startIcon={<Icon>checked</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: "10px", marginRight: "10px" }}
+              sx={{
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
+              }}
+              onClick={OficinasDelete}
+            >
+              Eliminar
+            </Button>
 
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={DialogEliminar}
-              >
-                Cancelar
-              </Button>
-            </Grid>
+            <Button
+              startIcon={<Icon>close</Icon>}
+              variant="contained"
+              color="primary"
+              style={{ borderRadius: "10px" }}
+              sx={{
+                backgroundColor: "#DAD8D8",
+                color: "black",
+                "&:hover": { backgroundColor: "#BFBABA" },
+              }}
+              onClick={DialogEliminar}
+            >
+              Cancelar
+            </Button>
+          </Grid>
         </DialogActions>
       </Dialog>
+       {/* Fin del Dialog(Modal) Eliminar */}
+
+       {/* Inicia del collapse Detalles */}
+      <Collapse in={mostrarDetalles}>
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-center",
+          }}
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: "0px", marginBottom: "10px" }}>
+                <Chip label="Detalles de la Oficina" />
+              </Divider>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id de la Oficina:
+                  </Typography>
+                  <Typography>{DatosDetalles["ofic_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre de la Oficina:
+                  </Typography>
+                  <Typography>{DatosDetalles["ofic_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>
+                      Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>
+                      Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>
+                        date_range
+                      </Icon>
+                      Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioCreacionNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["ofic_FechaCreacion"]
+                        ? new Date(
+                            DatosDetalles["ofic_FechaCreacion"]
+                          ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioModificacionNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["ofic_FechaModificacion"]
+                        ? new Date(
+                            DatosDetalles["ofic_FechaModificacion"]
+                          ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
+              <div className="card-footer">
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    CollapseDetalles();
+                  }}
+                  startIcon={<Icon>arrow_back</Icon>}
+                >
+                  Regresar
+                </Button>
+              </div>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Collapse>
+       {/* Fin del Collapse Detalles */}
 
     </Card>
   );

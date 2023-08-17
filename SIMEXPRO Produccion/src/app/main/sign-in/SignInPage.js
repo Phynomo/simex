@@ -15,11 +15,18 @@ import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import { useEffect } from "react";
-import jwtService from "../../auth/services/jwtService";
-import Swal from "sweetalert2";
+import jwtService from "../../auth/services/jwtService"
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import KeyIcon from "@mui/icons-material/Key";
 import { InputAdornment } from "@material-ui/core";
+import "react-toastify/dist/ReactToastify.css";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+import { toast } from "react-toastify";
 
 /**
  * Form Validation Schema
@@ -27,31 +34,6 @@ import { InputAdornment } from "@material-ui/core";
 
 //Toasts
 
-const Toast = Swal.mixin({
-  toast: true,
-  position: "top-right",
-  iconColor: "red",
-  width: 400,
-  customClass: {
-    popup: "colored-toast",
-  },
-  showConfirmButton: false,
-  timer: 3000,
-  timerProgressBar: true,
-});
-
-const Toast2 = Swal.mixin({
-  toast: true,
-  position: "top-right",
-  iconColor: "orange",
-  width: 400,
-  customClass: {
-    popup: "colored-toast",
-  },
-  showConfirmButton: false,
-  timer: 3000,
-  timerProgressBar: true,
-});
 
 const schema = yup.object().shape({
   email: yup.string().required('You must enter a email'),
@@ -94,16 +76,14 @@ function SignInPage() {
           // No need to do anything, user data will be set at app/auth/AuthContext
         })
         .catch((_errors) => {
-          Toast.fire({
-            icon: "error",
-            title: "No se pudo iniciar sesion.",
-          });
+          if(_errors.data['message'] == 'El usuario o contraseña son incorrectos'){
+            ToastError('El usuario o contraseña son incorrectos')
+          }else{
+            ToastError('No se pudo iniciar sesión')
+          }
         });
     } else {
-      Toast2.fire({
-        icon: "error",
-        title: "Hay campos vacios.",
-      });
+      ToastWarning('Hay campos vacios')
     }
   }
 

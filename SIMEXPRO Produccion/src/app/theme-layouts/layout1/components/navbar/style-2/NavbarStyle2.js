@@ -117,8 +117,8 @@ function NavbarStyle2(props) {
   const config = useSelector(selectFuseCurrentLayoutConfig);
   const navbar = useSelector(selectFuseNavbar);
 
-  // const folded = !navbar.open;
-  const { folded } = config.navbar;
+   const folded = !navbar.open;
+  //const { folded } = config.navbar;
   const foldedandclosed = folded && !navbar.foldedOpen;
   const foldedandopened = folded && navbar.foldedOpen;
 

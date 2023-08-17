@@ -29,6 +29,7 @@ import {
   TextField,
   FormLabel,
 } from "@mui/material";
+import InputMask from 'react-input-mask';
 import SearchIcon from "@mui/icons-material/Search";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -38,8 +39,35 @@ import { useForm, Controller } from "react-hook-form";
 import { Badge, Dropdown, Space, Table } from "antd";
 import axios from 'axios';
 import "src/styles/custom-pagination.css";
+import FormaEnvioService from "./FormaEnvioService";
+import LoadingIcon from "src/styles/iconoCargaTabla";
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
+
+{/*Yup para formulario de agregar Inicio */ }
+
+//Constante para campos por defecto
+const campos = {
+  CodigoFormaEnvio: '',
+  FormaEnvio: '',
+};
+
+//Constante para indicar que el valor es requerido
+const schema = yup.object().shape({
+  CodigoFormaEnvio: yup.string().trim().max(2).required(),
+  FormaEnvio: yup.string().trim().required()
+});
+
+{/*Yup para formulario de agregar Fin */ }
 
 function FormaDeEnvioIndex() {
+
   //Constante para la busqueda del datatable
   const [searchText, setSearchText] = useState("");
 
@@ -51,216 +79,92 @@ function FormaDeEnvioIndex() {
   const [mostrarEditar, setmostrarEditar] = useState(false);
   const [mostrarDetalles, setmostrarDetalles] = useState(false);
   const [Eliminar, setEliminar] = useState(false);
+  const [editar, setEditar] = useState(false);
+  const [DatosDetalles, setDatosDetalles] = useState({});
 
   //Constante para las filas que tendrá cada paginación del datatable
   const [filas, setFilas] = React.useState(10);
 
-  //Constante de los valores de los textfield de la pantalla
-  const [id, setid] = useState("");
-  const [FormaEnvioCodigo, setFormaEnvioCodigo] = useState("");
-  const [FormaEnvio, setFormaEnvio] = useState("");
-  const [idEliminar, setidEliminar] = useState(0);
-
-  //Constante para asignar los valores a la tabla y mapear
-  const[DataTabla, setDataTabla] = useState([])
-
-  //Constante para guardar los datos de la tabla de detalles
-  const[DataDetalles, setDataDetalles] = useState([])
-
-  const camposToFilter = ["id","CodigoFormaEnvio","FormaEnvio"];
+  const camposToFilter = ["key", "foen_Codigo", "foen_Descripcion"];
   const [anchorEl, setAnchorEl] = useState({});
-
-  //Hook UseEffect para que cargue los datos de un solo cuando inicice la pantalla
-  useEffect(() => {
-    CargarDatosTabla();
-  }, []);
-
-   //Constante para cargar datos a las tablas
-   const CargarDatosTabla = async () => {
-    try {
-    const customHeaders = {
-        'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-      };
-      const response = await axios.get(process.env.REACT_APP_API_URL+'api/FormasEnvio/Listar', {
-        headers: customHeaders,
-      }); 
-      const rows = response.data.data.map((item,index) => {
-        return {
-          key:index,
-          id: item.foen_Id,
-          Codigo: item.foen_Codigo,
-          FormaEnvio: item.foen_Descripcion,
-        }
-      });
-      setDataTabla(rows);
-      setDataDetalles(response.data.data)
-    } catch (error) {
-    }
-  };
-
-
-   {/*Yup para formulario de agregar Inicio */}
-  //Constante de valores por defecto que tomara el yup
-  const campos = {
-    CodigoFormaEnvio:'',
-    FormaEnvio: '',
-  };
-
-  //Constante para indicar que el valor es requerido
-  const schema = yup.object().shape({
-    CodigoFormaEnvio: yup.string().required(),
-    FormaEnvio: yup.string().required()
-  });
-
-  //Constante useForm para el formulario de Agregar que nos proporciona todas las opciones para validar con yup
-  const { handleSubmit, register, reset, control, watch, formState } = useForm({
-    campos,
-    mode: 'all',
-    resolver: yupResolver(schema),
-  });
-
-  const { isValid, dirtyFields, errors, touchedFields } = formState;
-  //Yup para formulario de agregar Fin
-
-  //Yup para formulario de Editar Inicio
-  //Constante de valores por defecto que tomara el yup
-  const camposEditar = {
-    CodigoFormaEnvioEditar: '',
-    FormaEnvioEditar: '',
-  };
-
-  //Constante para indicar que el valor es requerido
-  const schemaEditar = yup.object().shape({
-    CodigoFormaEnvioEditar: yup.string().required(),
-    FormaEnvioEditar: yup.string().required()
-  });
-
-  //Constante useForm para el formulario de Agregar que nos proporciona todas las opciones para validar con yup
-  const { handleSubmit:handleSubtmitEditar, reset:resetEditar, control:controlEditar, watch:WatchEditar, formState:formStateEditar, setValue:setValueEditar } = useForm({
-    camposEditar,
-    mode: 'all',
-    resolver: yupResolver(schemaEditar),
-  });
-
-  const {errors:ErrorsEditar } = formStateEditar;
-   {/*Yup para formulario de agregar Fin */}
-
-  const handleClick = (event, id) => {
-    setAnchorEl(prevState => ({
-      ...prevState,
-      [id]: event.currentTarget,
-    }));
-  };
-
-  const handleClose = (id) => {
-    setAnchorEl(prevState => ({
-      ...prevState,
-      [id]: null,
-    }));
-  };
-
-  //Constantes para el dialog de eliminar
-  const DialogEliminar = () => {
-    setEliminar(!Eliminar);
-  };
-
-  const EliminarRegistro = async () => {
-    let payload = {
-      foen_Id: idEliminar,
-      usua_UsuarioEliminacion: 1,
-      foen_FechaEliminacion: new Date()
-    };
-    const customHeaders = {
-      'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-    };
-    const response = await axios.post(process.env.REACT_APP_API_URL+'api/FormasEnvio/Eliminar',payload, {
-      headers: customHeaders,
-    });
-      if(response.data.data.messageStatus === "1" )
-      {
-        DialogEliminar();
-        CargarDatosTabla();
-        ToastSuccessEliminar();
-      }else{
-        ToastErrorApi();
-      }
-    }
-
-    //Constante para la accion de editar, abre el collapse de editar y carga el dato en el textfield
-    const handleEdit = (id, CodigoFormaEnvioEditar,FormaEnvioEditar) => {
-      setValueEditar("FormaEnvioEditar",FormaEnvioEditar)
-      setValueEditar("CodigoFormaEnvioEditar",CodigoFormaEnvioEditar)
-      setFormaEnvio(FormaEnvioEditar);
-      setFormaEnvioCodigo(CodigoFormaEnvioEditar)
-      setid(id);
-      MostrarCollapseEditar();
-      handleClose(id);
-    };
-
-  //Constante que recibe de la tabla el id y la descripcion para poder colocarlos en el apartado de 
-  //detalles y que ejecuta la funciona Detalles para llenar la tabla de detalles
-  const handleDetails = (id,CodigoFormaEnvio,FormaEnvio) => {
-    DetallesTabla(id, CodigoFormaEnvio,FormaEnvio);
-    MostrarCollapseDetalles();
-    handleClose(id);
-  };
-
-  //Constante para el detalle de las pantallas y  que llena la tabla de detalles
-  const DetallesTabla = (id, CodigoFormaEnvio,FormaEnvio) => {
-    setid(id);
-    setFormaEnvio(FormaEnvio);
-    setFormaEnvioCodigo(CodigoFormaEnvio);
-    const detalles = DataDetalles.find(d => d.foen_Id === id)
-    const tableRows = document.querySelectorAll('#detallesTabla tbody tr')
-    tableRows[0].cells[1].textContent = detalles.usuarioCreacionNombre;
-    tableRows[0].cells[2].textContent = detalles.foen_FechaCreacion;
-    tableRows[1].cells[1].textContent = detalles.usuarioModificacionNombre;
-    tableRows[1].cells[2].textContent = detalles.foen_FechaModificacion;
-  };        
-
-
-  //Constante para la accción de eliminar y que abre el dialog de eliminar en el index y cierra el boton de opciones
-  const handleDelete = (id) => {
-    DialogEliminar();
-    setidEliminar(id);
-    handleClose(id);
-  };
-
+  const [idEditar, setidEditar] = useState(0);
 
   const handleChange = (event) => {
     setFilas(event.target.value);
   };
 
+  const handleClick = (event, id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: event.currentTarget,
+    }));
+  };
+
+  const DialogEliminar = () => {
+    setEliminar(!Eliminar);
+  };
+
+  const handleClose = (id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: null,
+    }));
+  };
+
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos)
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+    handleClose(datos.foen_Id);
+  };
+
+  const handleDelete = (datos) => {
+    setValue('foen_Codigo', datos['foen_Id']);
+    DialogEliminar()
+    handleClose(datos.foen_Id);
+  };
+
+  //Handle que inicia la funcion de editar
+  const handleEdit = (datos) => {
+    VisibilidadTabla();
+    setEditar(true);
+    setidEditar(datos['foen_Id'])
+    //insertar aca las variables necesarias en su formulario
+    setValue("CodigoFormaEnvio", datos["foen_Codigo"]);
+    setValue("FormaEnvio", datos["foen_Descripcion"]);
+    handleClose(datos.foen_Id);
+  };
+
   {/* Columnas de la tabla */ }
   const columns = [
     {
-      title: 'ID',
-      dataIndex: 'id',
-      key: 'id',
-      sorter: (a, b) => a.id - b.id
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
     },
     {
       title: 'Codigo forma de envio',
-      dataIndex: 'Codigo',
-      key: 'Codigo',
-      sorter: (a, b) => a.Codigo.localeCompare(b.Codigo),
+      dataIndex: 'foen_Codigo',
+      key: 'foen_Codigo',
+      sorter: (a, b) => a.foen_Codigo.localeCompare(b.foen_Codigo),
     },
     {
       title: 'Forma de envio',
-      dataIndex: 'FormaEnvio',
-      key: 'FormaEnvio',
-      sorter: (a, b) => a.FormaEnvio.localeCompare(b.FormaEnvio),
+      dataIndex: 'foen_Descripcion',
+      key: 'foen_Descripcion',
+      sorter: (a, b) => a.foen_Descripcion.localeCompare(b.foen_Descripcion),
     },
     {
       title: 'Acciones',
       key: 'operation',
       render: (params) =>
-        <div key={params.id}>
+        <div key={params.foen_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.id}`}
+              aria-controls={`menu-${params.foen_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.id)}
+              onClick={(e) => handleClick(e, params.foen_Id)}
               variant="contained"
               style={{ borderRadius: '10px', backgroundColor: '#634A9E', color: 'white' }}
               startIcon={<Icon>menu</Icon>}
@@ -268,19 +172,19 @@ function FormaDeEnvioIndex() {
               Opciones
             </Button>
             <Menu
-              id={`menu-${params.id}`}
-              anchorEl={anchorEl[params.id]}
+              id={`menu-${params.foen_Id}`}
+              anchorEl={anchorEl[params.foen_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.id])}
-              onClose={() => handleClose(params.id)}
+              open={Boolean(anchorEl[params.foen_Id])}
+              onClose={() => handleClose(params.foen_Id)}
             >
-              <MenuItem onClick={() => handleEdit(params.id, params.Codigo ,params.FormaEnvio)}>
+              <MenuItem onClick={() => handleEdit(params)}>
                 <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.id, params.Codigo , params.FormaEnvio)}>
+              <MenuItem onClick={() => handleDetails(params)}>
                 <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.id)}>
+              <MenuItem onClick={() => handleDelete(params)}>
                 <Icon>delete</Icon>ㅤEliminar
               </MenuItem>
             </Menu>
@@ -290,93 +194,89 @@ function FormaDeEnvioIndex() {
     },
   ];
 
-  {/*Toast para validaciones Inicio*/}
+  const [data, setData] = useState([]);
 
-  //Constante ToastSuccess y ToastWarning que nos sirven para las alertas en las validaciones del formulario de Agregar
-  const ToastSuccess =() => {
-    toast.success('Datos ingresados correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  //Constante ToastSuccess y ToastWarning que nos sirven para las alertas en las validaciones del formulario de editar
-  const ToastSuccessEditar =() => {
-    toast.success('Datos editados correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  //Constante ToastSuccess y ToastWarning que nos sirven para las alertas en las validaciones del formulario de eliminar
-  const ToastSuccessEliminar =() => {
-    toast.success('Datos eliminado correctamente.', {
-      theme: 'dark',
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-    //Toast cuando los campos estan vacios
-    const ToastWarning = () => {
-      toast.warning('No se permiten campos vacios.', {
-        theme: 'dark',
-        //  position: toast.POSITION.BOTTOM_RIGHT
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
+  const FormaEnvioaGetData = async () => {
+    try {
+      setData(await FormaEnvioService.listar());
+    } catch (error) {
+      console.log(error.message);
     }
+  };
 
-    //Toast cuando los valores enviados a la API ya existen en la Base de datos
-    const ToastInfoWarning = () => {
-      toast.warning('El dato que desea ingresar ya existe.', {
-        theme: 'dark',
-        //  position: toast.POSITION.BOTTOM_RIGHT
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
+  const FormaEnvioCreate = async () => {
+    try {
+      const response = (await FormaEnvioService.crear(datosWatch))
+      if (response.data.data.messageStatus == '1') {
+        ToastSuccess('El registro se ha insertado exitosamente')
+        FormaEnvioaGetData();
+        VisibilidadTabla()
+        reset(campos)
+      } else if (response.data.data.messageStatus.includes('UNIQUE')) {
+        ToastWarning('El registro ya existe')
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError('Error inesperado')
     }
+  };
 
-    //Toast cuando los valores enviados a la API no funcionan y lanzan error en esta
-    const ToastErrorApi = () => {
-      toast.warning('Error en el proceso del envio de los datos.', {
-        theme: 'dark',
-        //  position: toast.POSITION.BOTTOM_RIGHT
-        style: {
-          marginTop: '50px'
-        },
-        autoClose: 1500,
-        closeOnClick: true
-      });
+  const FormaEnvioEdit = async () => {
+    try {
+      const response = (await FormaEnvioService.editar(datosWatch, idEditar))
+      if (response.data.data.messageStatus == '1') {
+        ToastSuccess('El registro se ha editado exitosamente')
+        FormaEnvioaGetData();
+        VisibilidadTabla()
+        reset(campos)
+      } else if (response.data.data.messageStatus.includes('UNIQUE')) {
+        ToastWarning('El registro ya existe')
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError('Error inesperado')
     }
+  };
 
+  const FormaEnvioDelete = async () => {
+    try {
+      const response = (await FormaEnvioService.eliminar(datosWatch))
+      if (response.data.data.messageStatus == '1') {
+        ToastSuccess('El registro se ha eliminado exitosamente')
+        FormaEnvioaGetData();
+        DialogEliminar()
+        reset(campos)
+      } else if (response.data.data.messageStatus.includes("0")) {
+        ToastError('El registro está en uso')
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError('Error inesperado')
+    }
+  };
 
-    {/*Toast para validaciones Fin*/}
+  useEffect(() => {
+    FormaEnvioaGetData();
+  }, []);
+
+  {
+    /* Función para mostrar la tabla y mostrar agregar */
+  }
+  const VisibilidadTabla = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAgregar(!mostrarAgregar);
+    reset(campos);
+  };
 
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
-    {/* Filtrado de datos */ }
-  //Constante que ayuda a filtrar el datatable
-  const filteredRows = DataTabla.filter((row) => {
+
+  {
+    /* Filtrado de datos */
+  }
+  const filteredRows = data.filter((row) => {
     if (searchText === "") {
       return true;  // Mostrar todas las filas si el buscador está vacío
     }
@@ -393,246 +293,29 @@ function FormaDeEnvioIndex() {
     return false;
   });
 
+  //Constante useForm para el formulario de Agregar que nos proporciona todas las opciones para validar con yup
+  const { handleSubmit, register, reset, control, watch, formState, setValue } = useForm({
+    campos,
+    mode: 'all',
+    resolver: yupResolver(schema),
+  });
 
-  {/* Funciones para abrir y cerrar los collapse de las distintas acciones que hacemos con los datos Inicio */ }
-    const VisibilidadTabla = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarAdd(!mostrarAdd);
-      reset(campos)
-    };  
-    
-    //Constante para mostrar el collapse de agregar un registro
-    const MostrarCollapseAgregar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarAgregar(!mostrarAgregar);
-      reset(campos);
-    };
+  const { isValid, dirtyFields, errors, touchedFields } = formState;
 
-    //Constante para mostrar el collapse de editar un registro
-    const MostrarCollapseEditar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarEditar(!mostrarEditar);
-    };
-
-    //Constante para mostrar el collapse de detalles un registro
-    const MostrarCollapseDetalles = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarDetalles(!mostrarDetalles);
-    };
-
-    //Constante para cerrar el collapse de agregar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-    const CerrarCollapseAgregar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarAgregar(!mostrarAgregar);
-      reset(campos);
-      CargarDatosTabla();  
-    };
-
-    //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-    const CerrarCollapseEditar = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarEditar(!mostrarEditar);
-      resetEditar(camposEditar);
-      CargarDatosTabla();
-    };
-
-    //Constante para cerrar el collapse de detalles
-    const CerrarCollapseDetalles = () => {
-      setmostrarIndex(!mostrarIndex);
-      setmostrarDetalles(!mostrarDetalles);
-    };
+  const datosWatch = watch();
 
 
-   {/* Funciones para abrir y cerrar los collapse de las distintas acciones que hacemos con los datos Fin */ }
-
-
-
-   {/* Estilos para la tabla de detalles Inicio */}
-    //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-    const iconStyle = {
-      marginRight: "5px",
-      verticalAlign: "middle",
-      color: "#634a9e",
-    };
-
-    //Constante para los estilos de los headers de la tabla de detalles
-    const tableHeaderStyle = {
-      verticalAlign: "middle",
-      padding: "15px",
-      textAlign: "left",
-      borderBottom: "1px solid #ddd",
-      backgroundColor: "#f2f2f2",
-    };
-
-    //Constante para los estilos de los filas de la tabla de detalles
-    const tableRowStyle = {
-      "&:hover": {
-        backgroundColor: "coral",
-      },
-    };
-
-    //Constante para los estilos de los celdas de la tabla de detalles
-    const tableCellStyle = {
-      verticalAlign: "middle",
-      padding: "15px",
-      textAlign: "left",
-      borderBottom: "1px solid #ddd",
-    };
-  {/* Estilos para la tabla de detalles Fin */}
-
-
-    {/* Funcionas para ejecutar las validaciones Inicio */}
-
-      { /* Funciones para formulario de agregar */}
-
-        //Constante para ejecutar las validaciones y el envio del formulario en el boton de agregar en el collapse de agregar
-        const AgregarRegistro = async () => {
-          const validationResult = await ValidacionAgregar(watch());
-          if (validationResult) {
-            handleSubmit(ValidacionAgregar)();
-          }
-        };
-
-        //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de agregar
-          const ValidacionAgregar = async(data) => {
-            let isValid = true;
-              if ( data.CodigoFormaEnvio != null ||data.FormaEnvio != null) {
-                  if (data.FormaEnvio.trim() === "" || data.CodigoFormaEnvio.trim() === ""  ) {
-                      ToastWarning();
-                      return isValid;
-                  } else {
-                      isValid = false;
-                      let respuesta = await EjecutarEndPoint(data);
-                      if(respuesta === 1){
-                        ToastSuccess();
-                        CerrarCollapseAgregar();                     
-                      } if (respuesta === 2){
-                        ToastInfoWarning();
-                      } if(respuesta  === 3){
-                        ToastErrorApi();
-                      } if(respuesta === 4){
-                        ToastErrorApi();
-                      }
-                      return isValid;
-                  }
-              }else{
-                ToastWarning();
-                return isValid;
-              }
-          }
-
-        //Ejecutar end point de tipo async para esperar la respuesta
-        const EjecutarEndPoint = async (data) => {
-          let payload = {
-            foen_Codigo:data.CodigoFormaEnvio,
-            foen_Descripcion: data.FormaEnvio,
-            usua_UsuarioCreacion: 1,
-            foen_FechaCreacion: new Date(),
-          };
-          const customHeaders = {
-            'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-          };
-          try {
-            const response = await axios.post(
-              process.env.REACT_APP_API_URL + 'api/FormasEnvio/Insertar',
-              payload,
-              {
-                headers: customHeaders,
-              }
-            );
-            if (response.data.data != null) {
-              if (response.data.data.messageStatus === '1') {
-                return 1;
-              } else {
-                if (response.data.data.messageStatus.includes('UNIQUE')) {
-                  return 2;
-                } else {
-                  return 3;
-                }
-              }
-            } else {
-              return 4;
-            }
-          } catch (error) {
-            return 4; 
-          }
-        };
-
-      { /* Funciones para formulario de agregar */}
-
-      { /* Funciones para formulario de Editar */}
-          //Constante para ejecutar las validaciones y el envio del formulario en el boton de editar en el collapse de editar
-            const EditarRegistro = async () => {
-              const validationResult = await ValidacionesEditar(WatchEditar());
-              if (validationResult) {
-                handleSubtmitEditar(ValidacionesEditar)();
-              }
-            };
-
-            //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-            const ValidacionesEditar = async (data) => {
-              let isValid = true;
-                if (data.FormaEnvioEditar != null) {
-                    if (data.FormaEnvioEditar.trim() === '') {
-                        ToastWarning();
-                        return isValid;
-                    } else {
-                        isValid = false;
-                        let respuesta = await EjecutarEndPointEditar(data);
-                        if(respuesta === 1){
-                          ToastSuccessEditar();
-                          CerrarCollapseEditar();  
-                        } if (respuesta === 2){
-                          ToastInfoWarning();
-                        } if(respuesta  === 3){
-                          ToastErrorApi();
-                        } if(respuesta === 4){
-                          ToastErrorApi();
-                        }
-                        return isValid;
-                    }
-                }else{
-                  ToastWarning();
-                  return isValid;
-                }
-            };
-
-             //Ejecutar end point de tipo async para esperar la respuesta
-              const EjecutarEndPointEditar = async (data) => {
-                let payload = {
-                  foen_Id:id,
-                  foen_Codigo:data.CodigoFormaEnvioEditar,
-                  foen_Descripcion: data.FormaEnvioEditar,
-                  usua_UsuarioModificacion: 1,
-                  foen_FechaModificacion: new Date()  
-                }
-                const customHeaders = {
-                  'XApiKey': '4b567cb1c6b24b51ab55248f8e66e5cc',
-                };
-                try {
-                  const response =  await axios.post(process.env.REACT_APP_API_URL+'api/FormasEnvio/Editar',payload,{
-                    headers: customHeaders,
-                  })   
-                  if (response.data.data != null) {
-                    if (response.data.data.messageStatus === '1') {
-                      return 1;
-                    } else {
-                      if (response.data.data.messageStatus.includes('UNIQUE')) {
-                        return 2;
-                      } else {
-                        return 3;
-                      }
-                    }
-                  } else {
-                    return 4;
-                  }
-                } catch (error) {
-                  return 4;
-                }
-              };
-
-      { /* Funciones para formulario de agregar */}
-    {/* Funcionas para ejecutar las validaciones Fin */}
+  const GuardarFormaEnvio = () => {
+    if (isValid) {
+      if (!editar) {
+        FormaEnvioCreate()
+      } else {
+        FormaEnvioEdit()
+      }
+    } else {
+      ToastWarning('Completa todos los campos')
+    }
+  };
 
   return (
     <Card sx={{ minWidth: 275, margin: '40px' }}>
@@ -656,7 +339,10 @@ function FormaDeEnvioIndex() {
                 backgroundColor: '#634A9E', color: 'white',
                 "&:hover": { backgroundColor: '#6e52ae' },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={() => {
+                VisibilidadTabla()
+                setEditar(false)
+              }}
             >
               Nuevo
             </Button>
@@ -700,17 +386,22 @@ function FormaDeEnvioIndex() {
 
           </Stack>
         </CardContent>
-      </Collapse>
 
-      {/* Mostrar tabla index inicio*/}
-      <Collapse in={mostrarIndex}>
+        {/* Mostrar tabla index inicio*/}
         <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
             columns={columns}
             dataSource={filteredRows}
             size="small"
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
+            }}
             pagination={{
               pageSize: filas,
+              showSizeChanger: false,
               className: "custom-pagination",
             }}
           />
@@ -718,84 +409,96 @@ function FormaDeEnvioIndex() {
       </Collapse>
       {/* Mostrar tabla index fin*/}
 
-       
+
       {/* Collapse para el formulario de agregar un registro inicio*/}
+      <form onSubmit={handleSubmit((_data) => { })}>
         <Collapse in={mostrarAgregar}>
-          <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Grid container spacing={3}>
-            <Grid item xs={6}>
-                <Controller
-                   render={({ field }) => (
-                    <FormControl error={!!errors.CodigoFormaEnvio} fullWidth>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Codigo de la forma de envio
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      error={!!errors.CodigoFormaEnvio}
-                      placeholder="Ingrese el codigo de la forma de envio"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                  )}
-                  name="CodigoFormaEnvio"
-                  control={control}
-                />
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Grid container spacing={3}>
+          <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar Formas de envio" : "Agregar Formas de envio"}
+                  />
+                </Divider>
             </Grid>
-            <Grid item xs={6}>
+              <Grid item xs={6}>
+                <FormControl error={!!errors.CodigoFormaEnvio} fullWidth>
+                  <FormLabel
+                    className="font-medium text-10"
+                    component="legend"
+                  >
+                    Codigo de la forma de envio
+                  </FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        variant="outlined"
+                        disabled={editar}
+                        error={!!errors.CodigoFormaEnvio}
+                        fullWidth={true}
+                        inputProps={{
+                          maxLength: 2,
+                        }}
+                      />
+                    )}
+                    name="CodigoFormaEnvio"
+                    control={control}
+                  />
+                </FormControl>
+              </Grid>
+              <Grid item xs={6}>         
                 <Controller
-                   render={({ field }) => (
+                  render={({ field }) => (
                     <FormControl error={!!errors.FormaEnvio} fullWidth>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Forma de envio
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      error={!!errors.FormaEnvio}
-                      placeholder="Ingrese el nombre de la forma de envio"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
+                      <FormLabel
+                        className="font-medium text-10"
+                        component="legend"
+                      >
+                        Forma de envio
+                      </FormLabel>
+                      <TextField
+                        {...field}
+                        variant="outlined"
+                        error={!!errors.FormaEnvio}
+                        fullWidth={true}
+                        inputProps={{
+                          startadornment: (
+                            <InputAdornment position="start"></InputAdornment>
+                          ),
+                        }}
+                      />
+                    </FormControl>
                   )}
                   name="FormaEnvio"
                   control={control}
                 />
-            </Grid>
+              </Grid>
 
               <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
                 <Button
                   startIcon={<Icon>checked</Icon>}
                   variant="contained"
                   color="primary"
+                  type="submit"
                   style={{ borderRadius: "10px", marginRight: "10px" }}
                   sx={{
                     backgroundColor: "#634A9E",
                     color: "white",
                     "&:hover": { backgroundColor: "#6e52ae" },
                   }}
-                  onClick={AgregarRegistro}
+                  onClick={GuardarFormaEnvio}
                 >
                   Guardar
                 </Button>
-                
+
                 <Button
                   startIcon={<Icon>close</Icon>}
                   variant="contained"
@@ -805,7 +508,7 @@ function FormaDeEnvioIndex() {
                     backgroundColor: '#DAD8D8', color: 'black',
                     "&:hover": { backgroundColor: '#BFBABA' },
                   }}
-                  onClick={CerrarCollapseAgregar}
+                  onClick={VisibilidadTabla}
                 >
                   Cancelar
                 </Button>
@@ -814,110 +517,11 @@ function FormaDeEnvioIndex() {
             </Grid>
           </CardContent>
         </Collapse>
+      </form>
+      {/* Collapse para el formulario de agregar un registro Fin*/}
 
-        {/* Collapse para el formulario de agregar un registro Fin*/}
 
-          {/* Collapse para el formulario de editar un registro inicio*/}
-          <Collapse in={mostrarEditar}>
-          <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Grid container spacing={3}>
-            <Grid item xs={6}>
-                <Controller
-                   render={({ field }) => (
-                    <FormControl error={!!ErrorsEditar.CodigoFormaEnvioEditar} fullWidth>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Codigo de la forma de envio
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      disabled
-                      variant="outlined"
-                      error={!!ErrorsEditar.CodigoFormaEnvioEditar}
-                      placeholder="Ingrese el codigo de la forma de envio"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                  )}
-                  name="CodigoFormaEnvioEditar"
-                  control={controlEditar}
-                />
-            </Grid>
-            <Grid item xs={6}>
-                <Controller
-                   render={({ field }) => (
-                    <FormControl error={!!ErrorsEditar.FormaEnvioEditar} fullWidth>
-                    <FormLabel
-                      className="font-medium text-10"
-                      component="legend"
-                    >
-                      Forma de envio
-                    </FormLabel>
-                    <TextField
-                      {...field}
-                      variant="outlined"
-                      id="FormaEnvioEditar"
-                      error={!!ErrorsEditar.FormaEnvioEditar}
-                      placeholder="Ingrese el nombre de la forma de envio"
-                      fullWidth={true}
-                      inputProps={{
-                        startadornment: (
-                          <InputAdornment position="start"></InputAdornment>
-                        ),
-                      }}
-                    />
-                  </FormControl>
-                  )}
-                  name="FormaEnvioEditar"
-                  control={controlEditar}
-                />
-            </Grid>
-
-              <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-                <Button
-                  startIcon={<Icon>checked</Icon>}
-                  variant="contained"
-                  color="primary"
-                  style={{ borderRadius: "10px", marginRight: "10px" }}
-                  sx={{
-                    backgroundColor: "#634A9E",
-                    color: "white",
-                    "&:hover": { backgroundColor: "#6e52ae" },
-                  }}
-                  onClick={EditarRegistro}
-                >
-                  Editar
-                </Button>
-                
-                <Button
-                  startIcon={<Icon>close</Icon>}
-                  variant="contained"
-                  color="primary"
-                  style={{ borderRadius: '10px' }}
-                  sx={{
-                    backgroundColor: '#DAD8D8', color: 'black',
-                    "&:hover": { backgroundColor: '#BFBABA' },
-                  }}
-                  onClick={CerrarCollapseEditar}
-                >
-                  Cancelar
-                </Button>
-              </Grid>
-
-            </Grid>
-          </CardContent>
-        </Collapse>
-
-        {/* Collapse para el formulario de agregar un registro Fin*/}
-
-        {/* Collapse para mostrar los detalles de un registro inicio*/}
+      {/* Collapse para mostrar los detalles de un registro inicio*/}
       <Collapse in={mostrarDetalles}>
         <CardContent
           sx={{
@@ -925,83 +529,114 @@ function FormaDeEnvioIndex() {
             justifyContent: "space-between",
             alignItems: "flex-start",
           }}
-        >   
-         <Grid container spacing={3}> 
-         <Grid item xs={12}>
-                <Divider style={{ marginTop: '0px', marginBottom: '0px' }}>
-                  <Chip color='default' label="Detalle Formas de envio" />
-                </Divider>
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: '0px', marginBottom: '10px' }}>
+                <Chip color='default' label="Detalle Formas de envio" />
+              </Divider>
             </Grid>
-              <Grid item xs={12}>   
-                <Box sx={{ display: "flex", flexDirection: "row" }}>
-                <Grid item xs={1}></Grid>
-                <Grid item xs={6}>
-                    <InputLabel htmlFor="id">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Forma de envio Id:
-                      </Typography>
-                      <Typography>{id}</Typography>
-                    </InputLabel>
-                    </Grid>
-                    <InputLabel htmlFor="descripcion">
-                      <Typography sx={{ fontWeight: "bold", color:"#000000" }}>
-                        Forma de envio descripción:
-                      </Typography>
-                      <Typography>{FormaEnvio}</Typography>
-                    </InputLabel>
-                </Box>
-                </Grid> 
-                <br></br>   
-                <Grid item xs={12}>            
-                      <table
-                        id="detallesTabla"
-                        style={{ width: "100%", borderCollapse: "collapse" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>edit</Icon>Accion
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>person</Icon>Usuario
-                            </th>
-                            <th style={tableHeaderStyle}>
-                              <Icon style={iconStyle}>date_range</Icon>Fecha y
-                              hora
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Creación</strong>
-                            </td>
-                            <td style={tableCellStyle}></td>
-                            <td style={tableCellStyle}></td>
-                          </tr>
-                          <tr style={tableRowStyle}>
-                            <td style={tableCellStyle}>
-                              <strong>Modificación</strong>
-                            </td>
-                            <td style={tableCellStyle}></td>
-                            <td style={tableCellStyle}></td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      </Grid> 
-              <br></br>
-              <Grid item xs={12}>    
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id de la forma de envio:
+                  </Typography>
+                  <Typography>{DatosDetalles['foen_Id']}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Codigo de la forma de envio:
+                  </Typography>
+                  <Typography>{DatosDetalles['foen_Codigo']}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Forma de envio descripción:
+                  </Typography>
+                  <Typography>{DatosDetalles["foen_Descripcion"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>date_range</Icon>Fecha y
+                      hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DatosDetalles['usuarioCreacionNombre']}</td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DatosDetalles['foen_FechaCreacion'] ? new Date(DatosDetalles['foen_FechaCreacion']).toLocaleString() : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DatosDetalles['usuarioModificacionNombre']}</td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>{DatosDetalles['foen_FechaModificacion'] ? new Date(DatosDetalles['foen_FechaModificacion']).toLocaleString() : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
               <div className="card-footer">
                 <Button
                   variant="contained"
-                  onClick={CerrarCollapseDetalles}
+                  onClick={() => {
+                    setmostrarIndex(!mostrarIndex);
+                    setmostrarDetalles(!mostrarDetalles);
+                  }}
                   startIcon={<Icon>arrow_back</Icon>}
                 >
                   Regresar
                 </Button>
               </div>
-              </Grid>
-              </Grid>  
+            </Grid>
+          </Grid>
         </CardContent>
       </Collapse>
       {/* Collapse para mostrar los detalles de un registro fin*/}
@@ -1032,7 +667,7 @@ function FormaDeEnvioIndex() {
                 backgroundColor: '#634A9E', color: 'white',
                 "&:hover": { backgroundColor: '#6e52ae' },
               }}
-              onClick={EliminarRegistro}
+              onClick={FormaEnvioDelete}
             >
               Eliminar
             </Button>
@@ -1051,19 +686,11 @@ function FormaDeEnvioIndex() {
               Cancelar
             </Button>
           </Grid>
-
-
-
-
         </DialogActions>
       </Dialog>
-      <ToastContainer />
     </Card>
 
   );
 }
 
 export default FormaDeEnvioIndex;
-
-
-

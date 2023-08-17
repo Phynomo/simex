@@ -1,4 +1,5 @@
 import SignOutPage from './SignOutPage';
+import { authRoles } from 'src/app/auth';
 
 const SignOutConfig = {
   settings: {
@@ -22,6 +23,7 @@ const SignOutConfig = {
       },
     },
   },
+  // auth: authRoles.admin,
   auth: null,
   routes: [
     {

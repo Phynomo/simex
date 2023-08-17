@@ -43,7 +43,7 @@ const archiveDDL = {
     paisesDDL: async () => {
         try {
             const response = await apiService.get('/api/Paises/Listar');
-            return response;
+            return response.data;
         } catch (error) {
             throw error;
         }
@@ -67,6 +67,7 @@ const archiveDDL = {
             throw error;
         }
     },
+
 
    
 };

@@ -1,130 +1,219 @@
-
-
-/* eslint-disable no-lone-blocks */
-/* eslint-disable prettier/prettier */
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardMedia from '@mui/material/CardMedia';
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
 import {
   Button,
-  ButtonBase,
   FormControl,
   Icon,
   IconButton,
   InputAdornment,
   InputLabel,
   TextField,
-  Avatar,
+  Autocomplete,
+  Divider,
+  Chip,
 } from "@mui/material";
-import * as React from 'react';
-import Stack from '@mui/material/Stack';
-import { DataGrid, GridToolbar, esES } from '@mui/x-data-grid'
-import { useState } from 'react';
-import SearchIcon from '@mui/icons-material/Search';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import Collapse from '@mui/material/Collapse';
-import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
-import Select from '@mui/material/Select';
-import Switch from '@mui/material/Switch';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Box from '@mui/material/Box'
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import { height } from '@mui/system';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import * as yup from 'yup';
-import { useForm, Controller } from 'react-hook-form'
-import { yupResolver } from '@hookform/resolvers/yup'
-import Alert from '@mui/material/Alert';
-import Swal from 'sweetalert2'
-import FormHelperText from '@mui/material/FormHelperText';
-import FormLabel from '@mui/material/FormLabel';
 
+import * as React from "react";
+import Stack from "@mui/material/Stack";
+import { useState, useEffect } from "react";
+import SearchIcon from "@mui/icons-material/Search";
+import Collapse from "@mui/material/Collapse";
+import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
+import Select from "@mui/material/Select";
+import Box from "@mui/material/Box";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
+import { height } from "@mui/system";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import FormLabel from "@mui/material/FormLabel";
+
+//Imports de validaciones
+import * as yup from "yup";
+import { useForm, Controller } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+//Imports tabla
 import { Badge, Dropdown, Space, Table } from "antd";
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import LoadingIcon from "src/styles/iconoCargaTabla";
+import "src/styles/custom-pagination.css";
+//import tabla detalles
+import estilosTablaDetalles from "src/styles/tablaDetalles";
+//Import service
+import provinciasService from "./ProvinciasService";
+//Import ddls
+import load_DDLs from "src/app/loadDDLs/Load_DDL";
+//import Toast
+import "react-toastify/dist/ReactToastify.css";
+import InputMask from "react-input-mask";
+import {
+  ToastSuccess,
+  ToastWarning,
+  ToastError,
+  ToastDefault,
+} from "src/styles/toastsFunctions";
 
+/* Campos del formulario*/
+const defaultProvinciasValues = {
+  id: "", //id necesario para el editar
+  prov_Codigo: "",
+  pais: null, //para los campos que son ddl poner null
+  prov_Nombre: "",
+};
+
+/* Esquema del fomulario (validaciones) */
+//En el esquema se eligen las validaciones que el formulario tendra
+const accountSchema = yup.object().shape({
+  id: yup.string(),
+  prov_Codigo: yup.string().trim().required(""),
+  pais: yup.object().required(""),
+  prov_Nombre: yup.string().trim().required(""),
+});
 
 function ProvinciasIndex() {
-  const [searchText, setSearchText] = useState('');
-  const [mostrarIndex, setmostrarIndex] = useState(true);
-  const [mostrarAdd, setmostrarAdd] = useState(false);
-  const [Eliminar, setEliminar] = useState(false);
-  const [filas, setFilas] = React.useState(10);
-  const [message, setMessage] = useState();
-  const [mostrarAgregar, setmostrarAgregar] = useState(false);
-  const [mostrarEditar, setmostrarEditar] = useState(false);
-  const [mostrarDetalles, setmostrarDetalles] = useState(false);
+  //Variables DDL
+  const [paises_DDL, setPaises_DDL] = useState([]);
 
-
-
-  {/* Validaciones de la pantalla de crear*/ }
-  const defaultProvinciasValues = {
-    pvin_Codigo: '',
-    pais_Id: 0,
-    pvin_Nombre: ''
+  //Cargado de las variables DDL
+  async function ddls() {
+    setPaises_DDL(await load_DDLs.paises());
   }
 
-  const ProvinciasSchema = yup.object().shape({
-    pvin_Codigo: yup.string().required(''),
-    pais_Id: yup.string().required(''),
-    pvin_Nombre: yup.string().required(''),
+  //variable para la barra de busqueda
+  const [searchText, setSearchText] = useState("");
 
-  })
+  //Variables para los collapse
+  const [mostrarIndex, setmostrarIndex] = useState(true);
+  const [mostrarAdd, setmostrarAdd] = useState(false);
+  const [mostrarDetalles, setmostrarDetalles] = useState(false);
 
-  const handleChange = (event) => {
-    setFilas(event.target.value);
-    setMessage(event.target.value);
+  //Variable donde se guardan los datos del detalle seleccionado
+  const [DatosDetalles, setDatosDetalles] = useState({});
+
+  //variable para el dialog(modal) de eliminar
+  const [Eliminar, setEliminar] = useState(false);
+
+  //Variable que indica si el usuario a seleccionar crear o editar
+  const [editar, setEditar] = useState(false);
+
+  //Variable que guarda la cantidad de filas a mostrar
+  const [filas, setFilas] = React.useState(10);
+
+  //Variable que hace algo con el menu XD
+  const [anchorEl, setAnchorEl] = useState({});
+
+  /* Datos de la tabla */
+  const [data, setData] = useState([]);
+
+  /* Controlador del Index(Tabla) */
+  const VisibilidadTabla = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarAdd(!mostrarAdd);
+    reset(defaultProvinciasValues);
   };
-  const [pvin_Codigo, setcodigo] = useState("");
-  const [pais_Id, setpais] = useState(0);
-  const [pvin_Nombre, setnombre] = useState("");
 
-
-
+  //Controlador del dialog(modal) eliminar
   const DialogEliminar = () => {
     setEliminar(!Eliminar);
   };
 
+  //Controlador del collapse detalles
+  const CollapseDetalles = () => {
+    setmostrarIndex(!mostrarIndex);
+    setmostrarDetalles(!mostrarDetalles);
+  };
 
-  //Constante para el boton de opciones
-  const [anchorEl, setAnchorEl] = useState({});
+  //controlador de las fillas a mostrar
+  const handleChangeFilas = (event) => {
+    setFilas(event.target.value);
+  };
 
-  //Constante de las columnas del index
+  //abre el menu al cual se le dio click
+  const handleClick = (event, id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: event.currentTarget,
+    }));
+  };
+
+  //Cierra el menu abierto
+  const handleClose = (id) => {
+    setAnchorEl((prevState) => ({
+      ...prevState,
+      [id]: null,
+    }));
+  };
+
+  //Handle que inicia la funcion de editar
+  const handleEdit = (datos) => {
+    VisibilidadTabla();
+    setEditar(true);
+    //insertar aca las variables necesarias en su formulario
+    setValue("id", datos["pvin_Id"]);
+    setValue("prov_Nombre", datos["pvin_Nombre"]);
+    setValue(
+      "pais",
+      paises_DDL.find((paises_DDL) => paises_DDL.value === datos["pais_Id"]) //importante para cargar bien los ddl al editar
+    );
+    setValue("prov_Codigo", datos["pvin_Codigo"]);
+    handleClose(datos.pvin_Id);
+  };
+
+  //Handle para mostrar los detalles del registro
+  const handleDetails = (datos) => {
+    setDatosDetalles(datos); //se guardan los datos en la variable escrita antes
+    CollapseDetalles();
+    handleClose(datos.pvin_Id);
+  };
+
+  //Handle delete en este caso no necesario (si quere mas info ir a la pantalla "TiposIdentidad")
+  const handleDelete = (datos) => {
+    // en caso de ocupar eliminar
+    handleClose(datos.pvin_Id);
+  };
+
+  {
+    /* Columnas de la tabla */
+  }
   const columns = [
+    {
+      title: "#",
+      dataIndex: "key",
+      key: "key",
+      sorter: (a, b) => a.key - b.key, //sorting para Numeros
+    },
     {
       title: "Codigo",
       dataIndex: "pvin_Codigo",
       key: "pvin_Codigo",
-      sorter: (a, b) => a.pvin_Codigo - b.pvin_Codigo, //sorting para Numeros
+      sorter: (a, b) => a.pvin_Codigo.localeCompare(b.pvin_Codigo), //sorting para Letras
     },
     {
-      title: "País",
-      dataIndex: "pais_Id",
-      key: "pais_Id",
-      sorter: (a, b) => a.pais_Id.localeCompare(b.pais_Id), //sorting para Letras
-    },
-    {
-      title: "País",
+      title: "Nombre",
       dataIndex: "pvin_Nombre",
       key: "pvin_Nombre",
       sorter: (a, b) => a.pvin_Nombre.localeCompare(b.pvin_Nombre), //sorting para Letras
     },
     {
+      title: "País",
+      dataIndex: "pais_Nombre",
+      key: "pais_Nombre",
+      sorter: (a, b) => a.pais_Nombre.localeCompare(b.pais_Nombre), //sorting para Letras
+    },
+    {
       title: "Acciones",
       key: "operation",
       render: (params) => (
-        <div key={params.pvin_Codigo}>
+        <div key={params.pvin_Id}>
           <Stack direction="row" spacing={1}>
             <Button
-              aria-controls={`menu-${params.pvin_Codigo}`}
+              aria-controls={`menu-${params.pvin_Id}`}
               aria-haspopup="true"
-              onClick={(e) => handleClick(e, params.pvin_Codigo)}
+              onClick={(e) => handleClick(e, params.pvin_Id)}
               variant="contained"
               style={{
                 borderRadius: "10px",
@@ -136,21 +225,21 @@ function ProvinciasIndex() {
               Opciones
             </Button>
             <Menu
-              pvin_Codigo={`menu-${params.pvin_Codigo}`}
-              anchorEl={anchorEl[params.pvin_Codigo]}
+              id={`menu-${params.pvin_Id}`}
+              anchorEl={anchorEl[params.pvin_Id]}
               keepMounted
-              open={Boolean(anchorEl[params.pvin_Codigo])}
-              onClose={() => handleClose(params.pvin_Codigo)}
+              open={Boolean(anchorEl[params.pvin_Id])}
+              onClose={() => handleClose(params.pvin_Id)}
             >
-              <MenuItem onClick={() => handleEdit(params.pvin_Codigo, params.pais_Id, params.pvin_Nombre)}>
+              <MenuItem onClick={() => handleEdit(params)}>
                 <Icon>edit</Icon>ㅤEditar
               </MenuItem>
-              <MenuItem onClick={() => handleDetails(params.pvin_Codigo, params.pais_Id, params.pvin_Nombre)}>
+              <MenuItem onClick={() => handleDetails(params)}>
                 <Icon>visibility</Icon>ㅤDetalles
               </MenuItem>
-              <MenuItem onClick={() => handleDelete(params.pvin_Codigo)}>
-                <Icon>delete</Icon>ㅤEliminar
-              </MenuItem>
+              {/* <MenuItem onClick={() => handleDelete(params)}>
+                <Icon>delete</Icon> Eliminar
+              </MenuItem> */}
             </Menu>
           </Stack>
         </div>
@@ -158,290 +247,127 @@ function ProvinciasIndex() {
     },
   ];
 
-
-  {/* Datos de la tabla */ }
-  const rows = [
-    { id: '1', pvin_Codigo: 'HN-AT', pvin_Nombre: 'Atlántida', pais_Id: 'Honduras' },
-    { id: '2', pvin_Codigo: 'HN-CH', pvin_Nombre: 'Choluteca', pais_Id: 'Honduras' },
-    { id: '3', pvin_Codigo: 'HN-CL', pvin_Nombre: 'Colón', pais_Id: 'Honduras' },
-    { id: '4', pvin_Codigo: 'HN-CM', pvin_Nombre: 'Comayagua', pais_Id: 'Honduras' },
-    { id: '5', pvin_Codigo: 'HN-CP', pvin_Nombre: 'Copán', pais_Id: 'Honduras' },
-    { id: '6', pvin_Codigo: 'HN-CR', pvin_Nombre: 'Cortés', pais_Id: 'Honduras' },
-    { id: '7', pvin_Codigo: 'HN-EP', pvin_Nombre: 'El Paraíso', pais_Id: 'Honduras' },
-    { id: '8', pvin_Codigo: 'HN-FM', pvin_Nombre: 'Francisco Morazán', pais_Id: 'Honduras' },
-    { id: '9', pvin_Codigo: 'HN-GD', pvin_Nombre: 'Gracias a Dios', pais_Id: 'Honduras' },
-    { id: '10', pvin_Codigo: 'HN-IN', pvin_Nombre: 'Intibucá', pais_Id: 'Honduras' },
-    { id: '11', pvin_Codigo: 'HN-IB', pvin_Nombre: 'Islas de la Bahía', pais_Id: 'Honduras' },
-    { id: '12', pvin_Codigo: 'HN-LP', pvin_Nombre: 'La Paz', pais_Id: 'Honduras' },
-    { id: '13', pvin_Codigo: 'HN-LM', pvin_Nombre: 'Lempira', pais_Id: 'Honduras' },
-    { id: '14', pvin_Codigo: 'HN-OC', pvin_Nombre: 'Ocotepeque', pais_Id: 'Honduras' },
-    { id: '15', pvin_Codigo: 'HN-OL', pvin_Nombre: 'Olancho', pais_Id: 'Honduras' },
-    { id: '16', pvin_Codigo: 'HN-SB', pvin_Nombre: 'Santa Bárbara', pais_Id: 'Honduras' },
-    { id: '17', pvin_Codigo: 'HN-VL', pvin_Nombre: 'Valle', pais_Id: 'Honduras' },
-    { id: '18', pvin_Codigo: 'HN-YO', pvin_Nombre: 'Yoro', pais_Id: 'Honduras' }
-  ];
-
-
+  //Controlador de la barra buscadora de la tabla
   const handleSearchChange = (event) => {
     setSearchText(event.target.value);
   };
 
+  //Constantes de los campos que se utilizaran para filtrar datos (Ingresar los campos que pusieron en la tabla(Columns))
+  const camposToFilter = ["key", "pvin_Codigo", "pvin_Nombre", "pais_Nombre"];
 
-
-  {/* Filtrado de datos */ }
   //Constante que ayuda a filtrar el datatable
-  const filteredRows = rows.filter((row) =>
-    Object.values(row).some(
-      (value) =>
-        typeof value === "string" &&
-        value.toLowerCase().includes(searchText.toLowerCase())
-    )
-  );
+  const filteredRows = data.filter((row) => {
+    if (searchText === "") {
+      return true; // Mostrar todas las filas si el buscador está vacío
+    }
 
-  //Constante para el cerrrar las opciones del boton de opciones
-  const handleClose = (codigo) => {
-    setAnchorEl((prevState) => ({
-      ...prevState,
-      [codigo]: null,
-    }));
-  };
-  const DetallesTabla = (codigo, pais, nombre) => {
-    setcodigo(codigo);
-    setpais(pais);
-    setnombre(nombre);
-
-  };
-
-  //Constante abrir el collapse de los detalles de la pantalla
-  const handleDetails = (codigo, pais, nombre) => {
-    DetallesTabla(codigo, pais, nombre);
-    MostrarCollapseDetalles();
-    handleClose(codigo);
-  };
-
-  //Constante para la accion de editar, abre el collapse de editar y carga el dato en el textfield
-  const handleEdit = (codigo, pais, nombre) => {
-    setcodigo(codigo);
-    setpais(pais);
-    setnombre(nombre);
-    MostrarCollapseEditar();
-    handleClose(codigo);
-  };
-
-  //Constante para mostrar el collapse de agregar un registro
-  const MostrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAgregar(!mostrarAgregar);
-    reset(defaultProvinciasValues);
-  };
-
-  //Constante para mostrar el collapse de editar un registro
-  const MostrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultProvinciasValues);
-  };
-
-  //Constante para mostrar el collapse de detalles un registro
-  const MostrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-  //Constante para cerrar el collapse de agregar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-  const CerrarCollapseAgregar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarAgregar(!mostrarAgregar);
-    reset(defaultProvinciasValues);
-  };
-
-  //Constante para cerrar el collapse de editar y limpiar el text field con el reset([Esquema por defecto que deben tener los campos])
-  const CerrarCollapseEditar = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarEditar(!mostrarEditar);
-    reset(defaultProvinciasValues);
-  };
-
-  //Constante para cerrar el collapse de detalles
-  const CerrarCollapseDetalles = () => {
-    setmostrarIndex(!mostrarIndex);
-    setmostrarDetalles(!mostrarDetalles);
-  };
-
-
-  const ToastSuccess = () => {
-    toast.success('Datos ingresados correctamente.', {
-      theme: 'dark',
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px'
-      },
-      autoClose: 1500,
-      closeOnClick: true
-    });
-  }
-
-  const ToastError = () => {
-    toast.error('No se permiten campos vacios.', {
-
-      //  position: toast.POSITION.BOTTOM_RIGHT
-      style: {
-        marginTop: '50px',
-        backgroundColor: '#111827',
-        color: 'white',
-        fill: 'white'
-
-      },
-      autoClose: 5000,
-      closeOnClick: true
-    });
-  }
-
-
-  const { handleSubmit, register, reset, control, watch, formState } = useForm({
-    defaultProvinciasValues,
-    mode: 'all',
-    resolver: yupResolver(ProvinciasSchema),
-  });
-
-  const { isValid, dirtyFields, errors } = formState;
-
-
-  //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de agregar
-  const ValidacionAgregar = (data) => {
-    console.log(data);
-    if (data.pais_Id.length != 0) {
-      if (data.pvin_Nombre != null || data.pvin_Codigo != null) {
-        if (
-          data.pvin_Codigo.trim() === "" ||
-          data.pvin_Nombre.trim() === "" ||
-          data.pais_Id[0] === "Selecciona una opción...") {
-          console.log("Validacion 1");
-          ToastError()
-        } else if (
-          data.pvin_Codigo.trim() === "" ||
-          data.pvin_Nombre.trim() === "" ||
-          data.pais_Id === "") {
-          console.log("Que onda");
-          ToastError();
-        } else {
-          console.log("Validacion 2");
-          MostrarCollapseAgregar();
-          ToastSuccess();
+    for (const [key, value] of Object.entries(row)) {
+      if (camposToFilter.includes(key)) {
+        const formattedValue =
+          typeof value === "number"
+            ? value.toString()
+            : value.toString().toLowerCase();
+        const formattedSearchText =
+          typeof searchText === "number"
+            ? searchText.toString()
+            : searchText.toLowerCase();
+        if (formattedValue.includes(formattedSearchText)) {
+          return true;
         }
       }
-      else {
-        console.log("Validacion 3");
-        ToastError();
-      }
-    } else {
-      console.log("Validacion 4");
-      if (
-        data.pvin_Nombre.trim() === "" ||
-        data.pvin_Codigo.trim() === "" ||
-        data.pais_Id === "") {
-        console.log("Que onda");
-        ToastError();
-      }
+    }
+    return false;
+  });
+
+  //Declaracion del formulario
+  const { handleSubmit, register, reset, control, watch, formState, setValue } =
+    useForm({
+      defaultProvinciasValues, //Campos del formulario
+      mode: "all",
+      resolver: yupResolver(accountSchema), //Esquema del formulario
+    });
+
+  //Validacion de campos vacios y errores
+  const { isValid, dirtyFields, errors } = formState;
+
+  //Datos del formulario
+  const datosWatch = watch();
+
+  //Peticion para cargar datos de la tabla
+  const provinciasGetData = async () => {
+    try {
+      setData(await provinciasService.listar());
+    } catch (error) {
+      console.log(error.message);
     }
   };
-  //Constante para validar el envio del formulario y asegurarnos de que los campos esten llenos en el formulario de editar
-  const ValidacionesEditar = (data) => {
-    console.log(data)
-    if (data.pvin_Codigo != null || data.pvin_Nombre != null) {
-      if (data.pvin_Codigo.trim() === "" || data.pvin_Nombre.trim() === "") {
-        ToastError();
+
+  //Peticion para crear un registro
+  const provinciasCreate = async () => {
+    try {
+      const response = await provinciasService.crear(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha insertado exitosamente");
+        provinciasGetData();
+        VisibilidadTabla();
+        reset(defaultProvinciasValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
+    }
+  };
+
+  // Peticion para editar un registro
+  const provinciasEdit = async () => {
+    try {
+      const response = await provinciasService.editar(datosWatch);
+      if (response.data.data.messageStatus == "1") {
+        ToastSuccess("El registro se ha editado exitosamente");
+        provinciasGetData();
+        VisibilidadTabla();
+        reset(defaultProvinciasValues);
+      } else if (response.data.data.messageStatus.includes("UNIQUE")) {
+        ToastWarning("El registro ya existe");
+      }
+    } catch (error) {
+      console.log(error.message);
+      ToastError("Error inesperado");
+    }
+  };
+
+  //useEffect para cargar datos al ingresar a la pantalla
+  useEffect(() => {
+    ddls();
+    provinciasGetData();
+  }, []);
+
+  //Controlador del formulario
+  const GuardarProvincia = () => {
+    if (isValid) {
+      // Validacion de campos completos
+      if (!editar) {
+        // Validacion de la funcion a realizar
+        provinciasCreate();
       } else {
-        MostrarCollapseEditar();
-        ToastSuccess();
+        provinciasEdit();
       }
     } else {
-      ToastError();
+      ToastWarning("Completa todos los campos");
     }
   };
-  //Constante para la accción de eliminar y que abre el dialog de eliminar en el index y cierra el boton de opciones
-  const handleDelete = (id) => {
-    DialogEliminar();
-    handleClose(id);
-  };
-  //Constante cuando se hace click para el boton de opciones
-  const handleClick = (event, id) => {
-    setAnchorEl((prevState) => ({
-      ...prevState,
-      [id]: event.currentTarget,
-    }));
-  };
-
-  const AgregarRegistro = () => {
-    const formData = watch();
-    ValidacionAgregar(formData);
-    setTimeout(() => {
-      handleSubmit(ValidacionAgregar)();
-    }, "250")
-  };
-
-  const EditarRegistro = () => {
-    const formData = watch();
-    formData.pvin_Codigo = pvin_Codigo;
-    formData.pais_Id = pais_Id;
-    formData.pvin_Nombre = pvin_Nombre;
-    ValidacionesEditar(formData);
-    setTimeout(() => {
-      handleSubmit(ValidacionesEditar)();
-    }, "250")
-  };
-
-
-  //Constante para alinear los iconos de la tabla de detalles con los headers de la tabla y cambiar el color a los iconos
-  const iconStyle = {
-    marginRight: "5px",
-    verticalAlign: "middle",
-    color: "#634a9e",
-  };
-
-  //Constante para los estilos de los headers de la tabla de detalles
-  const tableHeaderStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    backgroundColor: "#f2f2f2",
-  };
-
-  //Constante para los estilos de los filas de la tabla de detalles
-  const tableRowStyle = {
-    "&:hover": {
-      backgroundColor: "coral",
-    },
-  };
-
-  //Constante para los estilos de los celdas de la tabla de detalles
-  const tableCellStyle = {
-    verticalAlign: "middle",
-    padding: "15px",
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-  };
-  const typographyStyle = {
-    margin: '0', // Eliminamos el margen vertical
-    textAlign: 'center', // Centra el contenido dentro del Grid item
-    color: '#000000',
-  };
-
-
 
   return (
-    <Card sx={{ minWidth: 275, margin: '40px' }}>
-
-      <ToastContainer />
-      {/* CardMedia para los header de la carta (Imagenes header con nombres de la carta)*/}
+    <Card sx={{ minWidth: 275, margin: "40px" }}>
       <CardMedia
         component="img"
         height="200"
         image="https://i.ibb.co/wBVHDDW/PROVINCIAS.png"
         alt="Encabezado de la carta"
       />
-      {/*Collapse del index*/}
+      {/* Inicio del Collapse incial (Tabla/Index) */}
       <Collapse in={mostrarIndex}>
         <CardContent
           sx={{
@@ -450,7 +376,7 @@ function ProvinciasIndex() {
             alignItems: "flex-start",
           }}
         >
-          {/* Botón de Nuevo Inicio*/}
+          {/* Botón de Nuevo */}
           <Stack direction="row" spacing={1}>
             <Button
               startIcon={<Icon>add</Icon>}
@@ -462,33 +388,32 @@ function ProvinciasIndex() {
                 color: "white",
                 "&:hover": { backgroundColor: "#6e52ae" },
               }}
-              onClick={MostrarCollapseAgregar}
+              onClick={() => {
+                VisibilidadTabla();
+                setEditar(false);
+              }}
             >
               Nuevo
             </Button>
           </Stack>
-          {/* Botón de Nuevo Fin */}
 
-          {/* Select para las filas de la tabla inicio*/}
+          {/* Filtros de la tabla (Filas/Buscar) */}
           <Stack direction="row" spacing={1}>
             <label className="mt-8">Filas por página:</label>
             <FormControl sx={{ minWidth: 50 }} size="small">
-              {/* <InputLabel id="demo-select-small-label">Filas</InputLabel> */}
               <Select
                 labelId="demo-select-small-label"
                 id="demo-select-small"
                 value={filas}
-                // label="Filas"
-                onChange={handleChange}
+                onChange={handleChangeFilas}
               >
                 <MenuItem value={10}>10</MenuItem>
-                <MenuItem value={20}>20</MenuItem>
-                <MenuItem value={30}>30</MenuItem>
+                <MenuItem value={25}>25</MenuItem>
+                <MenuItem value={50}>50</MenuItem>
               </Select>
             </FormControl>
-            {/* Select para las filas de la tabla fin*/}
 
-            {/* Barra de Busqueda en la Tabla inicio */}
+            {/* Barra de Busqueda en la Tabla */}
             <TextField
               style={{ borderRadius: "10px" }}
               placeholder="Buscar"
@@ -506,147 +431,195 @@ function ProvinciasIndex() {
                 ),
               }}
             />
-            {/* Barra de Busqueda en la Tabla fin */}
           </Stack>
         </CardContent>
-      </Collapse>
 
-      {/* Mostrar tabla index inicio*/}
-      <Collapse in={mostrarIndex}>
+        {/* Declaracion de la tabla */}
         <div className="center" style={{ width: "95%", margin: "auto" }}>
           <Table
             columns={columns}
             dataSource={filteredRows}
             size="small"
+            locale={{
+              triggerDesc: "Ordenar descendente",
+              triggerAsc: "Ordenar ascendente",
+              cancelSort: "Cancelar",
+              emptyText: LoadingIcon(),
+            }}
             pagination={{
               pageSize: filas,
-              className: "decoration-white",
+              showSizeChanger: false,
+              className: "custom-pagination",
             }}
           />
         </div>
       </Collapse>
-      {/* Mostrar tabla index fin*/}
+      {/* Fin del Collapse incial (Tabla/Index) */}
 
-
-      {/* Formulario Agregar */}
-      <Collapse in={mostrarAgregar}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Grid container spacing={3}>
-
-
-            <Grid item xs={6}>
-              <div style={{marginTop: '33px'}}>
-
-                <Controller
-                  defaultValue={["Selecciona una opción..."]}
-                  render={({ field }) => (
-                    <FormControl error={!!errors.pais_Id} fullWidth>
-                      <FormLabel
-                        className="font-medium text-10"
-                        component="legend"
-                      >
-                        País
-                      </FormLabel>
-                      <Select
+      {/* Inicio del Formulario */}
+      <form onSubmit={handleSubmit((_data) => { })}>
+        <Collapse in={mostrarAdd}>
+          <CardContent
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+            }}
+          >
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Divider style={{ marginTop: "0px", marginBottom: "0px" }}>
+                  <Chip
+                    label={editar ? "Editar provincia" : "Agregar provincia"}
+                  />
+                </Divider>
+              </Grid>
+              <Grid item xs={6}>
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.pais}>País</FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <Autocomplete
                         {...field}
-                        fullWidth
-                        InputProps={{
-                          startAdornment: <InputAdornment position="start" />,
+                        id="pais"
+                        isOptionEqualToValue={(option, value) =>
+                          option.value === value?.value
+                        }
+                        options={paises_DDL}
+                        value={datosWatch.pais ?? null}
+                        onChange={(event, value) => {
+                          setValue("pais", value);
                         }}
+                        renderInput={(params) => (
+                          <TextField {...params} error={!!errors.pais} />
+                        )}
+                      />
+                    )}
+                    name="pais"
+                    error={!!errors.pais}
+                    control={control}
+                  />
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={6}>
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.prov_Codigo}>Codigo</FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        id="outlined-disabled"
+                        inputProps={{
+                          maxLength: 20,
+                        }}
+                        error={!!errors.prov_Codigo}
+                      />
+                    )}
+                    name="prov_Codigo"
+                    control={control}
+                  ></Controller>
+                </FormControl>
+                {/*<FormControl fullWidth>
+                  <FormLabel error={!!errors.prov_Codigo}>Codigo</FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <InputMask
+                        mask=""
+                        value={datosWatch["prov_Codigo"]}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        maskChar=" "
                       >
-                        <MenuItem value="10">HN-Honduras</MenuItem>
-                        <MenuItem value="20">CL-Colombia</MenuItem>
-                        <MenuItem value="30">US-Estados Unidos</MenuItem>
-                      </Select>
-                    </FormControl>
-                  )}
-                  name="pais_Id"
-                  control={control}
-                />
-              </div>
+                        {() => (
+                          <TextField
+                            {...field}
+                            id="outlined-disabled"
+                            label=""
+                            placeholder=""
+                            InputProps={{
+                              startAdornment: (
+                                <InputAdornment position="start"></InputAdornment>
+                              ),
+                            }}
+                            error={!!errors.prov_Codigo}
+                          />
+                        )}
+                      </InputMask>
+                    )}
+                    name="prov_Codigo"
+                    control={control}
+                  />
+                </FormControl>*/}
+              </Grid>
 
-            </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <FormLabel error={!!errors.prov_Nombre}>Nombre</FormLabel>
+                  <Controller
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        id="outlined-disabled"
+                        inputProps={{
+                          maxLength: 150,
+                        }}
+                        error={!!errors.prov_Nombre}
+                      ></TextField>
+                    )}
+                    name="prov_Nombre"
+                    control={control}
+                  ></Controller>
+                </FormControl>
+              </Grid>
 
-
-
-            <Grid item xs={6}>
-              <div className="mt-48 mb-16">
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Código de la provincia"
-                      variant="outlined"
-                      error={!!errors.pvin_Codigo}
-
-                      placeholder='Ingrese el código de la provincia'
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="pvin_Codigo"
-                  control={control}
-                />
-              </div>
-            </Grid>
-
-            <Grid item xs={12}>
-              <div className="mt-1 mb-16" >
-                <Controller
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      label="Nombre de la provincia"
-                      variant="outlined"
-                      error={!!errors.pvin_Nombre}
-
-                      placeholder='Ingrese el nombre de la provincia'
-                      fullWidth
-                      InputProps={{ startAdornment: (<InputAdornment position="start"></InputAdornment>), }}
-                    />
-                  )}
-                  name="pvin_Nombre"
-                  control={control}
-                />
-              </div>
-            </Grid>
-
-
-            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
-              <Button
-                startIcon={<Icon>checked</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px', marginRight: '10px' }}
+              <Grid
+                item
+                xs={12}
                 sx={{
-                  backgroundColor: '#634A9E', color: 'white',
-                  "&:hover": { backgroundColor: '#6e52ae' },
+                  display: "flex",
+                  justifyContent: "right",
+                  alignItems: "right",
                 }}
-                onClick={AgregarRegistro}
               >
-                Guardar
-              </Button>
+                <Button
+                  type="submit"
+                  startIcon={<Icon>checked</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px", marginRight: "10px" }}
+                  sx={{
+                    backgroundColor: "#634A9E",
+                    color: "white",
+                    "&:hover": { backgroundColor: "#6e52ae" },
+                  }}
+                  onClick={GuardarProvincia}
+                >
+                  Guardar
+                </Button>
 
-              <Button
-                startIcon={<Icon>close</Icon>}
-                variant="contained"
-                color="primary"
-                style={{ borderRadius: '10px' }}
-                sx={{
-                  backgroundColor: '#DAD8D8', color: 'black',
-                  "&:hover": { backgroundColor: '#BFBABA' },
-                }}
-                onClick={CerrarCollapseAgregar}
-              >
-                Cancelar
-              </Button>
+                <Button
+                  startIcon={<Icon>close</Icon>}
+                  variant="contained"
+                  color="primary"
+                  style={{ borderRadius: "10px" }}
+                  sx={{
+                    backgroundColor: "#DAD8D8",
+                    color: "black",
+                    "&:hover": { backgroundColor: "#BFBABA" },
+                  }}
+                  onClick={VisibilidadTabla}
+                >
+                  Cancelar
+                </Button>
+              </Grid>
             </Grid>
+          </CardContent>
+        </Collapse>
+      </form>
+      {/* Fin del Formulario */}
 
-          </Grid>
-        </CardContent>
-      </Collapse>
-
-
+      {/* Inicia del Dialog(Modal) Eliminar */}
       <Dialog
         open={Eliminar}
         fullWidth="md"
@@ -663,15 +636,24 @@ function ProvinciasIndex() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'right', alignItems: 'right' }} >
+          <Grid
+            item
+            xs={12}
+            sx={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "right",
+            }}
+          >
             <Button
               startIcon={<Icon>checked</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px', marginRight: '10px' }}
+              style={{ borderRadius: "10px", marginRight: "10px" }}
               sx={{
-                backgroundColor: '#634A9E', color: 'white',
-                "&:hover": { backgroundColor: '#6e52ae' },
+                backgroundColor: "#634A9E",
+                color: "white",
+                "&:hover": { backgroundColor: "#6e52ae" },
               }}
               onClick={DialogEliminar}
             >
@@ -682,10 +664,11 @@ function ProvinciasIndex() {
               startIcon={<Icon>close</Icon>}
               variant="contained"
               color="primary"
-              style={{ borderRadius: '10px' }}
+              style={{ borderRadius: "10px" }}
               sx={{
-                backgroundColor: '#DAD8D8', color: 'black',
-                "&:hover": { backgroundColor: '#BFBABA' },
+                backgroundColor: "#DAD8D8",
+                color: "black",
+                "&:hover": { backgroundColor: "#BFBABA" },
               }}
               onClick={DialogEliminar}
             >
@@ -694,14 +677,156 @@ function ProvinciasIndex() {
           </Grid>
         </DialogActions>
       </Dialog>
+      {/* Fin del Dialog(Modal) Eliminar */}
+
+      {/* Inicia del collapse Detalles */}
+      <Collapse in={mostrarDetalles}>
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-center",
+          }}
+        >
+          <Grid container spacing={3}>
+            <Grid item xs={12} style={{ marginBottom: "30px" }}>
+              <Divider style={{ marginTop: "0px", marginBottom: "10px" }}>
+                <Chip label="Detalles de la provincia" />
+              </Divider>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="id">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Id de la provincia:
+                  </Typography>
+                  <Typography>{DatosDetalles["pvin_Id"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Nombre de la provincia:
+                  </Typography>
+                  <Typography>{DatosDetalles["pvin_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid
+              container
+              spacing={2}
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: "40px",
+              }}
+            >
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    Codigo de la provincia:
+                  </Typography>
+                  <Typography>{DatosDetalles["pvin_Codigo"]}</Typography>
+                </InputLabel>
+              </Box>
+              <Box sx={{ flex: 1, textAlign: "center" }}>
+                <InputLabel htmlFor="descripcion">
+                  <Typography sx={{ fontWeight: "bold", color: "#000000" }}>
+                    País de la provincia:
+                  </Typography>
+                  <Typography>{DatosDetalles["pais_Nombre"]}</Typography>
+                </InputLabel>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12}>
+              <table
+                id="detallesTabla"
+                style={{ width: "100%", borderCollapse: "collapse" }}
+              >
+                <thead>
+                  <tr>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>edit</Icon>
+                      Accion
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>person</Icon>
+                      Usuario
+                    </th>
+                    <th style={estilosTablaDetalles.tableHeaderStyle}>
+                      <Icon style={estilosTablaDetalles.iconStyle}>
+                        date_range
+                      </Icon>
+                      Fecha y hora
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Creación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioCreacionNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["pvin_FechaCreacion"]
+                        ? new Date(
+                          DatosDetalles["pvin_FechaCreacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                  <tr style={estilosTablaDetalles.tableRowStyle}>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      <strong>Modificación</strong>
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["usuarioModificadorNombre"]}
+                    </td>
+                    <td style={estilosTablaDetalles.tableCellStyle}>
+                      {DatosDetalles["pvin_FechaModificacion"]
+                        ? new Date(
+                          DatosDetalles["pvin_FechaModificacion"]
+                        ).toLocaleString()
+                        : ""}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </Grid>
+            <br></br>
+            <Grid item xs={12}>
+              <div className="card-footer">
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    CollapseDetalles();
+                  }}
+                  startIcon={<Icon>arrow_back</Icon>}
+                >
+                  Regresar
+                </Button>
+              </div>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Collapse>
+      {/* Fin del Collapse Detalles */}
 
     </Card>
   );
 }
 
 export default ProvinciasIndex;
-
-
-
-
-
