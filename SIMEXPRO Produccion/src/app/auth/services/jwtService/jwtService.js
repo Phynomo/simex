@@ -65,8 +65,8 @@ class JwtService extends FuseUtils.EventEmitter {
       }
 
       axios
-        // .post(`${process.env.REACT_APP_API_URL}api/Usuarios/Login`, dataPeticion)
-        .post(`api/Usuarios/Login`, dataPeticion)
+        .post(`${process.env.REACT_APP_API_URL}api/Usuarios/Login`, dataPeticion)
+        // .post(`api/Usuarios/Login`, dataPeticion)
         .then(response => {
           if (response.data.data) {
             let user = {
@@ -115,10 +115,10 @@ class JwtService extends FuseUtils.EventEmitter {
       }
 
       axios
-      .post(`${process.env.REACT_APP_API_URL}api/Usuarios/Login`, dataPeticion)
-      // .post(`api/Usuarios/Login`, dataPeticion)
-      .then(response => {
-        console.log(response)
+        .post(`${process.env.REACT_APP_API_URL}api/Usuarios/Login`, dataPeticion)
+        // .post(`api/Usuarios/Login`, dataPeticion)
+        .then(response => {
+          console.log(response)
           if (response.data.data) {
             let user = {
               "uuid": response.data.data['usua_Id'],
@@ -222,16 +222,6 @@ class JwtService extends FuseUtils.EventEmitter {
       return '';
     }
   }
-  formatFechaHora = (date) => {
-    const year = date.getFullYear();
-    const mes = String(date.getMonth() + 1).padStart(2, '0');
-    const dia = String(date.getDate()).padStart(2, '0');
-    const hora = String(date.getHours()).padStart(2, '0');
-    const minutos = String(date.getMinutes()).padStart(2, '0');
-    const segundos = String(date.getSeconds()).padStart(2, '0');
-    
-    return `${year}-${mes}-${dia}T${hora}:${minutos}:${segundos}`;
-};
 
   formatFechaHora = (date) => {
     const year = date.getFullYear();
@@ -242,11 +232,10 @@ class JwtService extends FuseUtils.EventEmitter {
     const segundos = String(date.getSeconds()).padStart(2, '0');
 
     return `${year}-${mes}-${dia}T${hora}:${minutos}:${segundos}`;
-  }
+  };
 
 }
 
 const instance = new JwtService();
 
 export default instance;
-//ejecuta
